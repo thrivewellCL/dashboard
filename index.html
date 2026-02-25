@@ -311,7 +311,7 @@ canvas{max-height:320px}
     </div>
     <div class="chart-card">
       <div class="chart-title">🍩 Expense Breakdown by Category</div>
-      <div style="display:flex;justify-content:center;align-items:center;"><canvas id="expenseDonut" style="width:380px!important;height:380px!important;max-width:380px;max-height:380px"></canvas></div>
+      <div style="display:flex;justify-content:center;align-items:center;"><div style="display:flex;justify-content:center;align-items:center;"><canvas id="expenseDonut" style="width:500px!important;height:500px!important;max-width:500px;max-height:500px" style="width:500px!important;height:500px!important;max-width:500px;max-height:500px"></canvas></div></div>
     </div>
   </div>
   <!-- Revenue by Platform Pie Chart -->
@@ -1343,6 +1343,7 @@ function showTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => {
     if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
   });
+  if (id === 'prop-charts') { setTimeout(function(){ renderPropChart(); }, 50); }
 }
 
 // ---- Collapsible ----
@@ -1564,6 +1565,90 @@ function initDashboard() {
     bodyFont: { size: 13 }
   };
 
+  // ─── OUTER LABELS PLUGIN (pie/doughnut leader lines) ────────────────────
+  const outerLabelsPlugin = {
+    id: 'outerLabels',
+    afterDraw(chart) {
+      if (chart.config.type !== 'doughnut') return;
+      const {ctx, data, chartArea} = chart;
+      if (!chartArea) return;
+      const cx = (chartArea.left + chartArea.right) / 2;
+      const cy = (chartArea.top  + chartArea.bottom) / 2;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta || !meta.data.length) return;
+      const outerR = meta.data[0].outerRadius;
+      const dataset = data.datasets[0];
+      const total   = dataset.data.reduce((a,b)=>a+b,0);
+
+      ctx.save();
+      meta.data.forEach((arc, i) => {
+        const midAngle = (arc.startAngle + arc.endAngle) / 2;
+        const cosA = Math.cos(midAngle), sinA = Math.sin(midAngle);
+        const label = data.labels[i] || '';
+        const val   = dataset.data[i] || 0;
+        const pct   = ((val/total)*100).toFixed(1);
+        const txt1  = label;
+        const txt2  = '$' + val.toLocaleString() + '  (' + pct + '%)';
+
+        // Leader line
+        const lx1 = cx + (outerR + 6)  * cosA;
+        const ly1 = cy + (outerR + 6)  * sinA;
+        const lx2 = cx + (outerR + 22) * cosA;
+        const ly2 = cy + (outerR + 22) * sinA;
+        ctx.beginPath();
+        ctx.strokeStyle = dataset.backgroundColor[i];
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(lx1, ly1);
+        ctx.lineTo(lx2, ly2);
+        ctx.stroke();
+
+        // Box
+        const isRight = cosA >= 0;
+        const bx = cx + (outerR + 26) * cosA;
+        const by = cy + (outerR + 26) * sinA;
+        const pad = 6;
+        ctx.font = 'bold 11px Segoe UI';
+        const w1 = ctx.measureText(txt1).width;
+        ctx.font = '10px Segoe UI';
+        const w2 = ctx.measureText(txt2).width;
+        const boxW = Math.max(w1, w2) + pad*2;
+        const boxH = 30;
+        const boxX = isRight ? bx : bx - boxW;
+        const boxY = by - boxH/2;
+
+        // Box background
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.strokeStyle = dataset.backgroundColor[i];
+        ctx.lineWidth = 1.5;
+        const r = 4;
+        ctx.beginPath();
+        ctx.moveTo(boxX+r, boxY);
+        ctx.lineTo(boxX+boxW-r, boxY);
+        ctx.quadraticCurveTo(boxX+boxW, boxY, boxX+boxW, boxY+r);
+        ctx.lineTo(boxX+boxW, boxY+boxH-r);
+        ctx.quadraticCurveTo(boxX+boxW, boxY+boxH, boxX+boxW-r, boxY+boxH);
+        ctx.lineTo(boxX+r, boxY+boxH);
+        ctx.quadraticCurveTo(boxX, boxY+boxH, boxX, boxY+boxH-r);
+        ctx.lineTo(boxX, boxY+r);
+        ctx.quadraticCurveTo(boxX, boxY, boxX+r, boxY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Text
+        ctx.fillStyle = '#1f2937';
+        ctx.font = 'bold 11px Segoe UI';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(txt1, boxX+pad, boxY+9);
+        ctx.font = '10px Segoe UI';
+        ctx.fillStyle = '#374151';
+        ctx.fillText(txt2, boxX+pad, boxY+21);
+      });
+      ctx.restore();
+    }
+  };
+
+
   function fmtDollar(v) { return '$' + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits:0}); }
 
   // ─── 1. PROPERTY INCOME VS EXPENSES ─────────────────────────────────────
@@ -1651,21 +1736,13 @@ function initDashboard() {
           hoverBorderColor:'#c9a84c'
         }]
       },
-      plugins:[centerTextPlugin],
+      plugins:[centerTextPlugin, outerLabelsPlugin],
       options:{
         responsive:true, maintainAspectRatio:true, aspectRatio:1, cutout:'68%',
+        layout:{ padding:70 },
         plugins:{
-          datalabels:{ display:true },
-          legend:{ position:'right', labels:{color:'#e8eaf0', font:{size:11}, padding:10,
-            generateLabels: chart => {
-              const ds = chart.data.datasets[0];
-              return chart.data.labels.map((lbl,i)=>({
-                text: `${lbl}  ${fmtDollar(ds.data[i])}`,
-                fillStyle: ds.backgroundColor[i],
-                strokeStyle: 'transparent', lineWidth:0, index:i
-              }));
-            }
-          }},
+          datalabels:{ display:false },
+          legend:{ display:false },
           tooltip:{ ...tooltipDefaults, callbacks:{
             label: ctx => {
               const pct = ((ctx.parsed/total)*100).toFixed(1);
@@ -1713,24 +1790,13 @@ function initDashboard() {
           hoverBorderColor:'#fff'
         }]
       },
-      plugins:[centerPlugin2],
+      plugins:[centerPlugin2, outerLabelsPlugin],
       options:{
         responsive:true, maintainAspectRatio:true, aspectRatio:1, cutout:'62%',
+        layout:{ padding:75 },
         plugins:{
-          datalabels:{ display:true },
-          legend:{
-            position:'bottom',
-            labels:{ color:'#cde', padding:14, font:{size:12},
-              generateLabels: chart => {
-                const ds = chart.data.datasets[0];
-                return chart.data.labels.map((lbl,i)=>({
-                  text: `${lbl}  —  ${fmtDollar(ds.data[i])}`,
-                  fillStyle: ds.backgroundColor[i],
-                  strokeStyle:'transparent', lineWidth:0, index:i
-                }));
-              }
-            }
-          },
+          datalabels:{ display:false },
+          legend:{ display:false },
           tooltip:{ ...tooltipDefaults, callbacks:{
             title: ctx => ctx[0].label,
             label: ctx => {
@@ -1879,8 +1945,8 @@ function initDashboard() {
         {
           type:'bar', label:'Gross Income',
           data:[36143,38200],
-          backgroundColor:'rgba(106,153,78,0.88)',
-          borderColor:'rgba(120,175,90,1)',
+          backgroundColor:'#16a34a',
+          borderColor:'#15803d',
           borderWidth:1, borderRadius:2, borderSkipped:'bottom',
           barPercentage:0.5, categoryPercentage:0.72,
           order:2, datalabels:{display:true}
@@ -1889,8 +1955,8 @@ function initDashboard() {
         {
           type:'bar', label:'Total Expenses',
           data:[-12275,-11800],
-          backgroundColor:'rgba(155,38,38,0.88)',
-          borderColor:'rgba(180,50,50,1)',
+          backgroundColor:'#b91c1c',
+          borderColor:'#991b1b',
           borderWidth:1, borderRadius:2, borderSkipped:'top',
           barPercentage:0.5, categoryPercentage:0.72,
           order:2, datalabels:{display:true}
@@ -1899,17 +1965,17 @@ function initDashboard() {
         {
           type:'line', label:'Cumulative Net Income',
           data:[10396,20196],
-          borderColor:'#7ab8d4',
-          backgroundColor:'rgba(122,184,212,0.08)',
-          borderWidth:2.5,
-          pointBackgroundColor:'#7ab8d4',
+          borderColor:'#2563eb',
+          backgroundColor:'rgba(37,99,235,0.08)',
+          borderWidth:3,
+          pointBackgroundColor:'#2563eb',
           pointBorderColor:'#fff',
           pointBorderWidth:2,
           pointRadius:7, pointHoverRadius:10,
           tension:0.35, fill:false, order:1,
           datalabels:{
             display:true, align:'top', anchor:'end',
-            color:'#7ab8d4', font:{size:12,weight:'bold'},
+            color:'#1d4ed8', font:{size:12,weight:'bold'},
             formatter: v => '$'+v.toLocaleString()
           }
         }
@@ -1921,7 +1987,7 @@ function initDashboard() {
         datalabels:{ display:true },
         legend:{
           labels:{
-            color:'#e8eaf0', padding:20, font:{size:12},
+            color:'#374151', padding:20, font:{size:12},
             filter: item => !item.text.startsWith('_')
           }
         },
@@ -2197,27 +2263,27 @@ function renderPropChart() {
         {
           label: 'Base Dues',
           data: duesData,
-          backgroundColor: 'rgba(99,102,241,0.75)',
+          backgroundColor: '#4f46e5',
           borderRadius: 4,
           stack: 'stack0'
         },
         {
           label: 'Late Fees',
           data: lateData,
-          backgroundColor: 'rgba(239,68,68,0.85)',
+          backgroundColor: '#dc2626',
           borderRadius: 4,
           stack: 'stack0'
         },
         {
           label: 'Net to Host',
           data: netData,
-          backgroundColor: 'rgba(16,185,129,0.55)',
-          borderColor: 'rgba(16,185,129,0.9)',
+          backgroundColor: '#059669',
+          borderColor: '#047857',
           borderWidth: 1.5,
           borderRadius: 4,
           borderDash: [],
           type: 'bar',
-          stack: 'stack1'
+          stack: 'stack0'
         }
       ]
     },
