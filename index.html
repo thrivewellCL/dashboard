@@ -246,6 +246,24 @@ canvas{max-height:320px}
     <div class="chart-card" style="margin-bottom:20px">
       <div class="chart-title">📈 Monthly P&L Summary — Income vs Expenses vs Profit</div>
       <canvas id="monthlyPLChart" style="min-height:280px;width:100%"></canvas>
+        <div style="display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:14px;padding:10px 14px;background:#f8f9fb;border-radius:8px;border:1px solid #e8eaf0;">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
+            <div style="width:16px;height:12px;background:#22c55e;border-radius:3px;flex-shrink:0;"></div>
+            <span><strong>Green Bars &#x2191;</strong> &mdash; Gross income collected that month</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
+            <div style="width:16px;height:12px;background:#dc2626;border-radius:3px;flex-shrink:0;"></div>
+            <span><strong>Red Bars &#x2193;</strong> &mdash; Total operating expenses (shown below zero axis)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
+            <div style="width:20px;height:3px;background:#3b82f6;border-radius:2px;flex-shrink:0;margin:4px 0;"></div>
+            <span><strong>Blue Line</strong> &mdash; Cumulative YTD net cash flow (running total after mortgages)</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#aaa;">
+            <div style="width:16px;height:12px;background:#86efac;border-radius:3px;flex-shrink:0;opacity:0.6;"></div>
+            <span><strong>Ghost Bars</strong> &mdash; Visual depth overlay (same values, lighter shade for 3D effect)</span>
+          </div>
+        </div>
     </div>
 
     <div class="chart-row">
