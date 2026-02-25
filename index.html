@@ -1070,6 +1070,76 @@ canvas{max-height:320px}
     </table>
     </div>
   </div>
+
+    <div class="how-to-title" style="margin-top:36px">🛠️ Managing This Dashboard Without Tasklet</div>
+    <div class="how-to-sub">If you ever need to update this dashboard manually — without AI assistance — here's exactly how to do it.</div>
+
+    <div style="background:#0a1628;border:1px solid #c9a84c;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+      <div style="font-size:15px;font-weight:700;color:#c9a84c;margin-bottom:10px">📁 Where Everything Lives</div>
+      <ul style="color:#e8eaf0;font-size:13px;line-height:2;margin:0;padding-left:18px">
+        <li><strong>This dashboard file</strong> is stored on GitHub at:<br>
+          <code style="background:#0d1b2e;padding:3px 8px;border-radius:4px;color:#c9a84c">github.com/thrivewellCL/dashboard</code> → file named <code style="background:#0d1b2e;padding:3px 8px;border-radius:4px;color:#c9a84c">index.html</code></li>
+        <li><strong>GitHub login:</strong> Username <code style="background:#0d1b2e;padding:3px 8px;border-radius:4px">thrivewellCL</code> — use the password you set when creating the account</li>
+        <li><strong>Dashboard password gate:</strong> <code style="background:#0d1b2e;padding:3px 8px;border-radius:4px">Co-Living@654123</code></li>
+        <li>All data (income, expenses, charts) is <strong>hardcoded directly in the HTML file</strong> — no external database needed</li>
+      </ul>
+    </div>
+
+    <div class="how-to-title" style="font-size:15px;margin-bottom:8px">✏️ How to Edit Numbers Directly on GitHub</div>
+    <ul class="step-list">
+      <li><span class="step-num">1</span><div class="step-text">Go to <strong>github.com</strong> → log in as <strong>thrivewellCL</strong></div></li>
+      <li><span class="step-num">2</span><div class="step-text">Go to your repository: <strong>thrivewellCL/dashboard</strong> → click <strong>index.html</strong></div></li>
+      <li><span class="step-num">3</span><div class="step-text">Click the <strong>pencil icon ✏️</strong> (top right of the file view) to open the editor</div></li>
+      <li><span class="step-num">4</span><div class="step-text">Use <strong>Ctrl+F</strong> (or Cmd+F on Mac) to search for the number you want to change — e.g. search <code style="background:#0d1b2e;padding:2px 6px;border-radius:4px">36143</code> to find January gross income</div></li>
+      <li><span class="step-num">5</span><div class="step-text">Edit the number directly. <strong>Be careful</strong> — only change the value, not the surrounding code</div></li>
+      <li><span class="step-num">6</span><div class="step-text">Scroll to the bottom → click <strong>"Commit changes"</strong> → click <strong>"Commit directly to main"</strong> → click green <strong>Commit changes</strong> button</div></li>
+      <li><span class="step-num">7</span><div class="step-text">Wait <strong>2–3 minutes</strong> → hard refresh your dashboard (Ctrl+Shift+R or Cmd+Shift+R) → changes are live</div></li>
+    </ul>
+
+    <div class="how-to-title" style="font-size:15px;margin-bottom:8px;margin-top:24px">🔢 Key Numbers to Update Each Month</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>What to Update</th><th>Search For</th><th>Where It Appears</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Monthly income per property</strong></td><td>The property name + income amount</td><td>Properties P&amp;L tab + Overview charts</td></tr>
+        <tr><td><strong>Monthly expenses per property</strong></td><td>The property name + expense amount</td><td>Properties P&amp;L tab + Expenses tab</td></tr>
+        <tr><td><strong>Overview totals (gross income, NOI, etc.)</strong></td><td><code>grossIncome</code>, <code>totalExpenses</code>, <code>noi</code></td><td>Overview tab stat cards</td></tr>
+        <tr><td><strong>Monthly P&amp;L chart data</strong></td><td><code>monthlyPL</code></td><td>Overview chart — bar graph</td></tr>
+        <tr><td><strong>Utility amounts</strong></td><td>Utility provider name (e.g. APS, SRP, Cox)</td><td>Utilities tab</td></tr>
+        <tr><td><strong>Needs Review items</strong></td><td><code>needsReview</code></td><td>Needs Review tab</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="how-to-title" style="font-size:15px;margin-bottom:8px;margin-top:24px">💡 Alternative: Use Another AI Tool</div>
+    <div style="background:#0a1628;border:1px solid #2a3a50;border-radius:10px;padding:18px 22px;margin-bottom:24px">
+      <p style="color:#e8eaf0;font-size:13px;line-height:1.8;margin:0 0 10px">If you use another AI assistant (ChatGPT, Claude, etc.), you can update this dashboard by:</p>
+      <ol style="color:#e8eaf0;font-size:13px;line-height:2;margin:0;padding-left:18px">
+        <li>Download the <strong>index.html</strong> file from GitHub (click the file → click download icon)</li>
+        <li>Upload it to any AI chat along with your new bank statements</li>
+        <li>Ask: <em>"Update the financial numbers in this dashboard HTML file with the new data from these statements"</em></li>
+        <li>Download the updated HTML file the AI produces</li>
+        <li>Go to GitHub → <strong>thrivewellCL/dashboard</strong> → click <strong>index.html</strong> → click ✏️ pencil → click the <strong>three dots menu (⋯)</strong> → <strong>Upload file</strong> → replace with new file</li>
+        <li>Wait 2–3 min → hard refresh dashboard</li>
+      </ol>
+      <p style="color:#8899aa;font-size:12px;margin:10px 0 0">💬 <strong>Tip:</strong> Give the AI this context: "This is a real estate investment dashboard for 7 properties. Update the monthly P&L numbers, keep all formatting and password protection intact."</p>
+    </div>
+
+    <div class="how-to-title" style="font-size:15px;margin-bottom:8px;margin-top:24px">🔐 Important Credentials to Save Somewhere Safe</div>
+    <div style="background:#0a1628;border:1px solid #e05252;border-radius:10px;padding:18px 22px;margin-bottom:12px">
+      <table class="data-table" style="margin:0">
+        <thead><tr><th>Service</th><th>Username / Login</th><th>What It's For</th></tr></thead>
+        <tbody>
+          <tr><td><strong>GitHub</strong></td><td>thrivewellCL</td><td>Dashboard file storage &amp; publishing</td></tr>
+          <tr><td><strong>Dashboard Password</strong></td><td>Co-Living@654123</td><td>Access gate on the live dashboard</td></tr>
+          <tr><td><strong>Live Dashboard URL</strong></td><td>thrivewellcl.github.io/dashboard</td><td>Share with accountant, partners, etc.</td></tr>
+          <tr><td><strong>Google Calendar</strong></td><td>ferraragroupltd@gmail.com</td><td>Monthly statement reminders (1st–3rd)</td></tr>
+        </tbody>
+      </table>
+      <p style="color:#e05252;font-size:12px;margin:12px 0 0">⚠️ <strong>Save these credentials in a password manager or secure note.</strong> Without GitHub access you cannot update the dashboard.</p>
+    </div>
+
+  </div>
 </div>
 
 <script>
