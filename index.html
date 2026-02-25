@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ferrara Group — Real Estate Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1b2e;color:#e8eaf0;min-height:100vh}
@@ -1290,6 +1290,8 @@ function renderExpenses(search, cat, prop, month) {
 
 // ---- Charts ----
 function initDashboard() {
+  // Destroy any existing chart instances to prevent conflicts
+  Chart.helpers && Object.values(Chart.instances || {}).forEach(c => c.destroy && c.destroy());
   updatePendingCount();
   renderExpenses('','','','all');
   updateUnresolvedTotal();
@@ -1450,7 +1452,7 @@ async function checkPw() {
     sessionStorage.setItem('twcl_auth','1');
     document.getElementById('pw-overlay').style.display='none';
     document.getElementById('main-content').style.display='block';
-    setTimeout(initDashboard, 100);
+    requestAnimationFrame(()=>requestAnimationFrame(initDashboard));
   } else {
     document.getElementById('pw-error').style.display='block';
     document.getElementById('pw-input').value='';
@@ -1461,7 +1463,7 @@ if (sessionStorage.getItem('twcl_auth')==='1') {
   function doUnlock() {
     document.getElementById('pw-overlay').style.display='none';
     document.getElementById('main-content').style.display='block';
-    setTimeout(initDashboard, 100);
+    requestAnimationFrame(()=>requestAnimationFrame(initDashboard));
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', doUnlock);
