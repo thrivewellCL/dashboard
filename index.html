@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ferrara Group — Real Estate Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1b2e;color:#e8eaf0;min-height:100vh}
@@ -1382,144 +1383,411 @@ function initDashboard() {
   updateUnresolvedTotal();
 
   // Chart defaults
+  // ─── GLOBAL CHART DEFAULTS ────────────────────────────────────────────────
   Chart.defaults.color = '#8899aa';
-  Chart.defaults.borderColor = '#1e3a5f';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.07)';
+  Chart.register(ChartDataLabels);
 
-  // Property Income vs Expenses Bar Chart
+  // Shared tooltip style
+  const tooltipDefaults = {
+    backgroundColor: 'rgba(10,25,47,0.96)',
+    borderColor: '#c9a84c',
+    borderWidth: 1,
+    titleColor: '#c9a84c',
+    bodyColor: '#e8eaf0',
+    padding: 12,
+    cornerRadius: 8,
+    titleFont: { size: 13, weight: 'bold' },
+    bodyFont: { size: 13 }
+  };
+
+  function fmtDollar(v) { return '$' + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits:0}); }
+
+  // ─── 1. PROPERTY INCOME VS EXPENSES ─────────────────────────────────────
   new Chart(document.getElementById('propIncomeChart'), {
     type: 'bar',
     data: {
       labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview','Mesa','13th Ave'],
       datasets: [
-        {label:'Income (Jan)',data:[4800,4753,2683,4249,1486,2114,2480],backgroundColor:'rgba(74,222,128,0.8)'},
-        {label:'Expenses (Jan)',data:[2870,3060,4160,3270,5590,1125,2418],backgroundColor:'rgba(248,113,113,0.7)'}
+        {
+          label:'Income (Jan)',
+          data:[4800,4753,2683,4249,1486,2114,2480],
+          backgroundColor: ctx => {
+            const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
+            g.addColorStop(0,'rgba(74,222,128,0.95)'); g.addColorStop(1,'rgba(34,197,94,0.5)');
+            return g;
+          },
+          borderColor:'rgba(74,222,128,0.9)', borderWidth:1, borderRadius:6, borderSkipped:false
+        },
+        {
+          label:'Expenses (Jan)',
+          data:[2870,3060,4160,3270,5590,1125,2418],
+          backgroundColor: ctx => {
+            const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
+            g.addColorStop(0,'rgba(248,113,113,0.95)'); g.addColorStop(1,'rgba(220,38,38,0.5)');
+            return g;
+          },
+          borderColor:'rgba(248,113,113,0.9)', borderWidth:1, borderRadius:6, borderSkipped:false
+        }
       ]
     },
-    options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0'}}},scales:{x:{ticks:{color:'#8899aa'}},y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()}}}}
-  });
-
-  // Expense Donut
-  new Chart(document.getElementById('expenseDonut'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Mortgage','Electric','Gas','Internet','Water','Solar','Repairs','Landscaping','Cleaning','Other'],
-      datasets:[{data:[17849,1005,503,559,503,93,1540,1330,850,600],
-        backgroundColor:['#c9a84c','#fbbf24','#f97316','#a855f7','#38bdf8','#22c55e','#60a5fa','#4ade80','#f472b6','#94a3b8']}]
-    },
-    options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#e8eaf0',font:{size:11}}}}}
-  });
-
-  // PadSplit bar chart
-  // Revenue by Platform Pie Chart
-  new Chart(document.getElementById('vendorPieChart'), {
-    type: 'pie',
-    data: {
-      labels: ['PadSplit', 'Airbnb', 'LTR (Mesa & 13th Ave)', 'Direct (Zelle / Venmo)'],
-      datasets: [{
-        data: [31963, 9500, 9188, 28589],
-        backgroundColor: ['#4CAF50', '#FF5722', '#9C27B0', '#2196F3'],
-        borderColor: ['#2d7a32', '#c84315', '#6a0080', '#1565C0'],
-        borderWidth: 2,
-        hoverOffset: 10
-      }]
-    },
     options: {
-      responsive: true,
-      maintainAspectRatio: true,
+      responsive:true, maintainAspectRatio:false,
       plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#cde', padding: 16, font: { size: 13 } }
+        datalabels: {
+          anchor:'end', align:'end', color:'#e8eaf0', font:{size:11,weight:'bold'},
+          formatter: v => '$'+v.toLocaleString()
         },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              var val = ctx.parsed;
-              var total = ctx.dataset.data.reduce((a,b)=>a+b,0);
-              var pct = ((val/total)*100).toFixed(1);
-              return ' $' + val.toLocaleString() + '  (' + pct + '%)';
-            }
-          }
-        }
+        legend:{ labels:{color:'#e8eaf0', padding:16, font:{size:12}} },
+        tooltip: { ...tooltipDefaults, callbacks:{
+          label: ctx => ` ${ctx.dataset.label}: ${fmtDollar(ctx.parsed.y)}`
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#8899aa'}, grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()}, grid:{color:'rgba(255,255,255,0.05)'},
+           suggestedMax:7000}
       }
     }
   });
 
-  new Chart(document.getElementById('padsplitChart'), {
-    type: 'bar',
-    data: {
-      labels: ['5th Dr','Janice Way','38th Dr','25th St','Grandview'],
-      datasets: [
-        {label:'January',data:[4800,2683,3628,4249,366],backgroundColor:'rgba(201,168,76,0.8)'},
-        {label:'February (est.)',data:[4742,2259,3177,3530,2529],backgroundColor:'rgba(96,165,250,0.7)'}
-      ]
-    },
-    options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0'}}},scales:{x:{ticks:{color:'#8899aa'}},y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()}}}}
-  });
+  // ─── 2. EXPENSE DONUT ───────────────────────────────────────────────────
+  (function(){
+    const expData = [17849,1005,503,559,503,93,1540,1330,850,600];
+    const expLabels = ['Mortgage','Electric','Gas','Internet','Water','Solar','Repairs','Landscaping','Cleaning','Other'];
+    const expColors = ['#c9a84c','#fbbf24','#f97316','#a855f7','#38bdf8','#22c55e','#60a5fa','#4ade80','#f472b6','#94a3b8'];
+    const total = expData.reduce((a,b)=>a+b,0);
 
-  // Overview Utility Chart
-  new Chart(document.getElementById('utilityChart'), {
-    type: 'bar',
-    data: {
-      labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview'],
-      datasets: [
-        {label:'Electric',data:[59,87,252,293,64],backgroundColor:'rgba(251,191,36,0.8)'},
-        {label:'Gas',data:[0,94,97,64,0],backgroundColor:'rgba(249,115,22,0.7)'},
-        {label:'Internet',data:[161,16,215,80,86],backgroundColor:'rgba(168,85,247,0.7)'},
-        {label:'Water',data:[85,126,109,105,79],backgroundColor:'rgba(56,189,248,0.7)'},
-        {label:'Solar',data:[93,0,0,0,0],backgroundColor:'rgba(34,197,94,0.8)'}
-      ]
-    },
-    options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0',font:{size:11}}}},scales:{x:{stacked:true,ticks:{color:'#8899aa'}},y:{stacked:true,ticks:{color:'#8899aa',callback:v=>'$'+v}}}}
-  });
+    // Center text plugin (inline)
+    const centerTextPlugin = {
+      id:'centerText',
+      afterDraw(chart){
+        if(chart.config.type !== 'doughnut') return;
+        const {ctx, chartArea:{top,bottom,left,right}} = chart;
+        const cx = (left+right)/2, cy = (top+bottom)/2;
+        ctx.save();
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='#c9a84c'; ctx.font='bold 18px Segoe UI';
+        ctx.fillText('$'+total.toLocaleString(), cx, cy-10);
+        ctx.fillStyle='#8899aa'; ctx.font='12px Segoe UI';
+        ctx.fillText('Total Expenses', cx, cy+12);
+        ctx.restore();
+      }
+    };
 
-  // Utility Stacked Chart (Utilities tab)
-  const utilCtx = document.getElementById('utilityStackChart');
-  if (utilCtx) {
-    new Chart(utilCtx, {
-      type: 'bar',
+    new Chart(document.getElementById('expenseDonut'), {
+      type: 'doughnut',
       data: {
-        labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview'],
-        datasets: [
-          {label:'Electric',data:[59,87,252,293,64],backgroundColor:'#fbbf24'},
-          {label:'Gas',data:[0,94,97,64,0],backgroundColor:'#f97316'},
-          {label:'Internet',data:[161,16,215,80,86],backgroundColor:'#a855f7'},
-          {label:'Water',data:[85,126,109,105,79],backgroundColor:'#38bdf8'},
-          {label:'Solar',data:[93,0,0,0,0],backgroundColor:'#22c55e'}
+        labels: expLabels,
+        datasets:[{
+          data: expData,
+          backgroundColor: expColors,
+          borderColor:'rgba(13,27,46,0.8)',
+          borderWidth:2,
+          hoverOffset:12,
+          hoverBorderColor:'#c9a84c'
+        }]
+      },
+      plugins:[centerTextPlugin],
+      options:{
+        responsive:true, cutout:'68%',
+        plugins:{
+          datalabels:{ display:false },
+          legend:{ position:'right', labels:{color:'#e8eaf0', font:{size:11}, padding:10,
+            generateLabels: chart => {
+              const ds = chart.data.datasets[0];
+              return chart.data.labels.map((lbl,i)=>({
+                text: `${lbl}  ${fmtDollar(ds.data[i])}`,
+                fillStyle: ds.backgroundColor[i],
+                strokeStyle: 'transparent', lineWidth:0, index:i
+              }));
+            }
+          }},
+          tooltip:{ ...tooltipDefaults, callbacks:{
+            label: ctx => {
+              const pct = ((ctx.parsed/total)*100).toFixed(1);
+              return ` ${fmtDollar(ctx.parsed)}  (${pct}%)`;
+            }
+          }}
+        }
+      }
+    });
+  })();
+
+  // ─── 3. REVENUE BY PLATFORM (DOUGHNUT) ──────────────────────────────────
+  (function(){
+    const platData   = [31963, 9500, 9188, 28589];
+    const platLabels = ['PadSplit','Airbnb','LTR (Mesa & 13th Ave)','Direct (Zelle / Venmo)'];
+    const platColors = ['#4CAF50','#FF5722','#9C27B0','#2196F3'];
+    const platTotal  = platData.reduce((a,b)=>a+b,0);
+
+    const centerPlugin2 = {
+      id:'centerText2',
+      afterDraw(chart){
+        if(chart.canvas.id !== 'vendorPieChart') return;
+        const {ctx, chartArea:{top,bottom,left,right}} = chart;
+        const cx=(left+right)/2, cy=(top+bottom)/2;
+        ctx.save();
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle='#c9a84c'; ctx.font='bold 18px Segoe UI';
+        ctx.fillText('$'+platTotal.toLocaleString(), cx, cy-10);
+        ctx.fillStyle='#8899aa'; ctx.font='12px Segoe UI';
+        ctx.fillText('Gross Revenue', cx, cy+12);
+        ctx.restore();
+      }
+    };
+
+    new Chart(document.getElementById('vendorPieChart'), {
+      type: 'doughnut',
+      data:{
+        labels: platLabels,
+        datasets:[{
+          data: platData,
+          backgroundColor: platColors,
+          borderColor:'rgba(13,27,46,0.8)',
+          borderWidth:2,
+          hoverOffset:14,
+          hoverBorderColor:'#fff'
+        }]
+      },
+      plugins:[centerPlugin2],
+      options:{
+        responsive:true, maintainAspectRatio:true, cutout:'62%',
+        plugins:{
+          datalabels:{ display:false },
+          legend:{
+            position:'bottom',
+            labels:{ color:'#cde', padding:14, font:{size:12},
+              generateLabels: chart => {
+                const ds = chart.data.datasets[0];
+                return chart.data.labels.map((lbl,i)=>({
+                  text: `${lbl}  —  ${fmtDollar(ds.data[i])}`,
+                  fillStyle: ds.backgroundColor[i],
+                  strokeStyle:'transparent', lineWidth:0, index:i
+                }));
+              }
+            }
+          },
+          tooltip:{ ...tooltipDefaults, callbacks:{
+            title: ctx => ctx[0].label,
+            label: ctx => {
+              const pct = ((ctx.parsed/platTotal)*100).toFixed(1);
+              return ` ${fmtDollar(ctx.parsed)}  ·  ${pct}% of revenue`;
+            }
+          }}
+        }
+      }
+    });
+  })();
+
+  // ─── 4. PADSPLIT BY PROPERTY ─────────────────────────────────────────────
+  new Chart(document.getElementById('padsplitChart'), {
+    type:'bar',
+    data:{
+      labels:['5th Dr','Janice Way','38th Dr','25th St','Grandview'],
+      datasets:[
+        {
+          label:'January',
+          data:[4800,2683,3628,4249,366],
+          backgroundColor: ctx => {
+            const g = ctx.chart.ctx.createLinearGradient(0,0,0,260);
+            g.addColorStop(0,'rgba(201,168,76,0.95)'); g.addColorStop(1,'rgba(201,168,76,0.4)');
+            return g;
+          },
+          borderColor:'rgba(201,168,76,0.9)', borderWidth:1, borderRadius:6, borderSkipped:false
+        },
+        {
+          label:'February (est.)',
+          data:[4742,2259,3177,3530,2529],
+          backgroundColor: ctx => {
+            const g = ctx.chart.ctx.createLinearGradient(0,0,0,260);
+            g.addColorStop(0,'rgba(96,165,250,0.95)'); g.addColorStop(1,'rgba(96,165,250,0.4)');
+            return g;
+          },
+          borderColor:'rgba(96,165,250,0.9)', borderWidth:1, borderRadius:6, borderSkipped:false
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        datalabels:{
+          anchor:'end', align:'end', color:'#e8eaf0', font:{size:10,weight:'bold'},
+          formatter: v => '$'+v.toLocaleString()
+        },
+        legend:{ labels:{color:'#e8eaf0', padding:14, font:{size:12}} },
+        tooltip:{ ...tooltipDefaults, callbacks:{
+          label: ctx => ` ${ctx.dataset.label}: ${fmtDollar(ctx.parsed.y)}`
+        }}
+      },
+      scales:{
+        x:{ticks:{color:'#8899aa'}, grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()}, grid:{color:'rgba(255,255,255,0.05)'},
+           suggestedMax:6000}
+      }
+    }
+  });
+
+  // ─── 5. UTILITY STACKED (OVERVIEW) ──────────────────────────────────────
+  const utilShared = {
+    responsive:true,
+    plugins:{
+      datalabels:{
+        display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+        color:'#fff', font:{size:10,weight:'bold'},
+        formatter: v => v>0 ? '$'+v : ''
+      },
+      legend:{ labels:{color:'#e8eaf0', font:{size:11}, padding:10} },
+      tooltip:{ ...tooltipDefaults, mode:'index', intersect:false,
+        callbacks:{
+          label: ctx => ctx.parsed.y > 0 ? ` ${ctx.dataset.label}: ${fmtDollar(ctx.parsed.y)}` : null,
+          footer: items => {
+            const total = items.reduce((s,i)=>s+i.parsed.y,0);
+            return total>0 ? `  Total: ${fmtDollar(total)}` : '';
+          }
+        }
+      }
+    },
+    scales:{
+      x:{stacked:true, ticks:{color:'#8899aa'}, grid:{color:'rgba(255,255,255,0.05)'}},
+      y:{stacked:true, ticks:{color:'#8899aa',callback:v=>'$'+v}, grid:{color:'rgba(255,255,255,0.05)'}}
+    }
+  };
+
+  new Chart(document.getElementById('utilityChart'), {
+    type:'bar',
+    data:{
+      labels:['5th Dr','38th Dr','Janice Way','25th St','Grandview'],
+      datasets:[
+        {label:'Electric',data:[59,87,252,293,64],backgroundColor:'#fbbf24',borderRadius:3},
+        {label:'Gas',data:[0,94,97,64,0],backgroundColor:'#f97316',borderRadius:3},
+        {label:'Internet',data:[161,16,215,80,86],backgroundColor:'#a855f7',borderRadius:3},
+        {label:'Water',data:[85,126,109,105,79],backgroundColor:'#38bdf8',borderRadius:3},
+        {label:'Solar',data:[93,0,0,0,0],backgroundColor:'#22c55e',borderRadius:3}
+      ]
+    },
+    options: utilShared
+  });
+
+  // ─── 6. UTILITY STACKED (UTILITIES TAB) ─────────────────────────────────
+  const utilCtx = document.getElementById('utilityStackChart');
+  if(utilCtx){
+    new Chart(utilCtx, {
+      type:'bar',
+      data:{
+        labels:['5th Dr','38th Dr','Janice Way','25th St','Grandview'],
+        datasets:[
+          {label:'Electric',data:[59,87,252,293,64],backgroundColor:'#fbbf24',borderRadius:3},
+          {label:'Gas',data:[0,94,97,64,0],backgroundColor:'#f97316',borderRadius:3},
+          {label:'Internet',data:[161,16,215,80,86],backgroundColor:'#a855f7',borderRadius:3},
+          {label:'Water',data:[85,126,109,105,79],backgroundColor:'#38bdf8',borderRadius:3},
+          {label:'Solar',data:[93,0,0,0,0],backgroundColor:'#22c55e',borderRadius:3}
         ]
       },
-      options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0'}}},scales:{x:{stacked:true,ticks:{color:'#8899aa'}},y:{stacked:true,ticks:{color:'#8899aa',callback:v=>'$'+v}}}}
+      options: utilShared
     });
   }
 
-  // Restore localStorage changes
-
-  // Monthly P&L Summary Chart
+  // ─── 7. MONTHLY P&L — COMBO (BARS + LINE) ────────────────────────────────
   new Chart(document.getElementById('monthlyPLChart'), {
-    type: 'bar',
-    data: {
-      labels: ['January 2026', 'February 2026 (est.)'],
-      datasets: [
-        {label:'Gross Income',   data:[36143, 38200], backgroundColor:'rgba(74,222,128,0.85)', order:2},
-        {label:'Total Expenses', data:[12275, 11800], backgroundColor:'rgba(248,113,113,0.75)', order:2},
-        {label:'Net Profit',     data:[10396,  9800], backgroundColor:'rgba(201,168,76,0.9)',   order:2},
+    type:'bar',
+    data:{
+      labels:['January 2026','February 2026 (est.)'],
+      datasets:[
+        // Ghost income bars (wider, lighter — depth effect)
+        {
+          type:'bar', label:'_incomeGhost',
+          data:[36143,38200],
+          backgroundColor:'rgba(144,190,109,0.22)',
+          borderColor:'transparent', borderWidth:0,
+          barPercentage:0.82, categoryPercentage:0.72,
+          order:5, datalabels:{display:false}
+        },
+        // Ghost expense bars (wider, lighter, negative)
+        {
+          type:'bar', label:'_expenseGhost',
+          data:[-12275,-11800],
+          backgroundColor:'rgba(200,80,80,0.18)',
+          borderColor:'transparent', borderWidth:0,
+          barPercentage:0.82, categoryPercentage:0.72,
+          order:5, datalabels:{display:false}
+        },
+        // Income bars — green, going UP
+        {
+          type:'bar', label:'Gross Income',
+          data:[36143,38200],
+          backgroundColor:'rgba(106,153,78,0.88)',
+          borderColor:'rgba(120,175,90,1)',
+          borderWidth:1, borderRadius:2, borderSkipped:'bottom',
+          barPercentage:0.5, categoryPercentage:0.72,
+          order:2, datalabels:{display:false}
+        },
+        // Expense bars — dark red, going DOWN (negative values)
+        {
+          type:'bar', label:'Total Expenses',
+          data:[-12275,-11800],
+          backgroundColor:'rgba(155,38,38,0.88)',
+          borderColor:'rgba(180,50,50,1)',
+          borderWidth:1, borderRadius:2, borderSkipped:'top',
+          barPercentage:0.5, categoryPercentage:0.72,
+          order:2, datalabels:{display:false}
+        },
+        // Cumulative Net Income line — blue
+        {
+          type:'line', label:'Cumulative Net Income',
+          data:[10396,20196],
+          borderColor:'#7ab8d4',
+          backgroundColor:'rgba(122,184,212,0.08)',
+          borderWidth:2.5,
+          pointBackgroundColor:'#7ab8d4',
+          pointBorderColor:'#fff',
+          pointBorderWidth:2,
+          pointRadius:7, pointHoverRadius:10,
+          tension:0.35, fill:false, order:1,
+          datalabels:{
+            display:true, align:'top', anchor:'end',
+            color:'#7ab8d4', font:{size:12,weight:'bold'},
+            formatter: v => '$'+v.toLocaleString()
+          }
+        }
       ]
     },
     options:{
       responsive:true,
       plugins:{
-        legend:{labels:{color:'#e8eaf0'}},
-        tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}}
+        datalabels:{ display:false },
+        legend:{
+          labels:{
+            color:'#e8eaf0', padding:20, font:{size:12},
+            filter: item => !item.text.startsWith('_')
+          }
+        },
+        tooltip:{
+          ...tooltipDefaults, mode:'index', intersect:false,
+          callbacks:{
+            label: ctx => {
+              if(ctx.dataset.label.startsWith('_')) return null;
+              const v = Math.abs(ctx.parsed.y);
+              return ` ${ctx.dataset.label}: $${v.toLocaleString()}`;
+            }
+          }
+        }
       },
       scales:{
-        x:{ticks:{color:'#8899aa'},grid:{color:'#1e3a5f'}},
-        y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()},grid:{color:'#1e3a5f'}}
+        x:{
+          ticks:{color:'#8899aa'},
+          grid:{color:'rgba(255,255,255,0.05)'},
+          grouped: false
+        },
+        y:{
+          ticks:{color:'#8899aa', callback: v => '$'+Math.abs(v).toLocaleString()},
+          grid:{color:'rgba(255,255,255,0.05)'},
+          suggestedMax:45000,
+          suggestedMin:-18000
+        }
       }
     }
   });
-
-  // YTD summary card values (Jan only so far)
-  // These are baked in - will update when Feb is finalized
 
   restoreChanges();
 }
