@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+(function() {
+  var HASH = "f8779730a98f3f921620d9f0a45dedea858a8e9991104a8703f43125d9ff8b31";
+  function sha256(str) {
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str))
+      .then(function(buf) {
+        return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+      });
+  }
+  var stored = sessionStorage.getItem('fg_auth');
+  if (stored !== HASH) {
+    document.addEventListener('DOMContentLoaded', function() {
+      document.body.style.display = 'none';
+      var overlay = document.createElement('div');
+      overlay.id = 'auth-overlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:99999;';
+      overlay.innerHTML = '<div style="background:#1e293b;border-radius:16px;padding:48px 40px;max-width:400px;width:90%;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.5);">' +
+        '<div style="font-size:48px;margin-bottom:16px;">\ud83c\udfe0</div>' +
+        '<h1 style="color:#f1f5f9;font-family:sans-serif;font-size:24px;margin:0 0 8px;">Ferrara Group LTD</h1>' +
+        '<p style="color:#94a3b8;font-family:sans-serif;font-size:14px;margin:0 0 32px;">Real Estate Dashboard — Private Access</p>' +
+        '<input id="pwd-input" type="password" placeholder="Enter password" style="width:100%;padding:14px 16px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:16px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
+        '<button id="pwd-btn" style="width:100%;padding:14px;background:#3b82f6;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:16px;">Access Dashboard</button>' +
+        '<div id="pwd-error" style="color:#ef4444;font-family:sans-serif;font-size:14px;display:none;">Incorrect password. Please try again.</div>' +
+        '</div>';
+      document.body.parentNode.insertBefore(overlay, document.body);
+      document.getElementById('pwd-input').addEventListener('keypress', function(e){ if(e.key==='Enter') checkPwd(); });
+      document.getElementById('pwd-btn').addEventListener('click', checkPwd);
+      function checkPwd() {
+        var val = document.getElementById('pwd-input').value;
+        sha256(val).then(function(hash) {
+          if (hash === HASH) {
+            sessionStorage.setItem('fg_auth', hash);
+            overlay.remove();
+            document.body.style.display = '';
+          } else {
+            document.getElementById('pwd-error').style.display = 'block';
+            document.getElementById('pwd-input').value = '';
+          }
+        });
+      }
+    });
+  }
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ferrara Group — Real Estate Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0d1b2e;color:#e8eaf0;min-height:100vh}
+.top-bar{background:linear-gradient(135deg,#0d1b2e 0%,#1a2d4a 100%);border-bottom:2px solid #c9a84c;padding:16px 32px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:22px;font-weight:700;color:#c9a84c;letter-spacing:1px}
+.logo span{color:#fff;font-weight:300}
+.timestamp{color:#8899aa;font-size:13px}
+.tabs{display:flex;background:#0d1b2e;border-bottom:1px solid #1e3a5f;padding:0 24px;overflow-x:auto;gap:4px}
+.tab-btn{padding:14px 20px;cursor:pointer;border:none;background:transparent;color:#8899aa;font-size:14px;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s}
+.tab-btn:hover{color:#c9a84c}
+.tab-btn.active{color:#c9a84c;border-bottom-color:#c9a84c}
+.tab-content{display:none;padding:28px 32px;max-width:1400px;margin:0 auto}
+.tab-content.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:28px}
+.kpi-card{background:#13253d;border-radius:12px;padding:24px;border:1px solid #1e3a5f;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#c9a84c,#f0c040)}
+.kpi-label{font-size:12px;color:#8899aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.kpi-value{font-size:32px;font-weight:700;color:#fff}
+.kpi-sub{font-size:13px;color:#8899aa;margin-top:6px}
+.kpi-green .kpi-value{color:#4ade80}
+.kpi-red .kpi-value{color:#f87171}
+.kpi-gold .kpi-value{color:#c9a84c}
+.card{background:#13253d;border-radius:12px;padding:24px;border:1px solid #1e3a5f;margin-bottom:20px}
+.card-title{font-size:16px;font-weight:600;color:#c9a84c;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.chart-card{background:#13253d;border-radius:12px;padding:24px;border:1px solid #1e3a5f}
+.chart-title{font-size:14px;font-weight:600;color:#c9a84c;margin-bottom:16px}
+.warning-banner{background:#2d1a0e;border:1px solid #f59e0b;border-radius:10px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.warning-banner:hover{background:#3d2a1e}
+.warning-text{color:#fbbf24;font-weight:600}
+.warning-sub{color:#d97706;font-size:13px}
+.progress-bar-wrap{background:#0d1b2e;border-radius:10px;padding:16px;margin-bottom:24px;border:1px solid #1e3a5f}
+.progress-label{font-size:13px;color:#8899aa;margin-bottom:8px}
+.progress-track{background:#1e3a5f;border-radius:6px;height:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#c9a84c,#4ade80)}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{background:#0d1b2e;color:#c9a84c;padding:10px 12px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1e3a5f;position:sticky;top:0;z-index:5}
+.data-table td{padding:9px 12px;border-bottom:1px solid #1a2d4a;vertical-align:middle}
+.data-table tr:hover td{background:#1a2d4a}
+.data-table tr.needs-review td{background:#2d1f0e}
+.data-table tr.income td{background:#0e2d1a}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase}
+.badge-red{background:#3d0e0e;color:#f87171;border:1px solid #7f1d1d}
+.badge-green{background:#0e2d1a;color:#4ade80;border:1px solid #14532d}
+.badge-blue{background:#0e1d3d;color:#60a5fa;border:1px solid #1e3a7f}
+.badge-amber{background:#2d1f0e;color:#fbbf24;border:1px solid #7f4d0e}
+.badge-gold{background:#2d230e;color:#c9a84c;border:1px solid #7f5d0e}
+.badge-gray{background:#1a2d4a;color:#8899aa;border:1px solid #2d3d5a}
+.prop-card{background:#13253d;border-radius:12px;padding:24px;border:1px solid #1e3a5f;margin-bottom:20px;position:relative}
+.prop-card.green-card{border-left:4px solid #4ade80}
+.prop-card.amber-card{border-left:4px solid #fbbf24}
+.prop-card.red-card{border-left:4px solid #f87171}
+.prop-name{font-size:18px;font-weight:700;color:#c9a84c;margin-bottom:4px}
+.prop-address{font-size:13px;color:#8899aa;margin-bottom:16px}
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.prop-stat{background:#0d1b2e;border-radius:8px;padding:12px}
+.prop-stat-label{font-size:11px;color:#8899aa;text-transform:uppercase;letter-spacing:.5px}
+.prop-stat-value{font-size:18px;font-weight:700;color:#fff;margin-top:4px}
+.prop-stat-value.income{color:#4ade80}
+.prop-stat-value.expense{color:#f87171}
+.prop-stat-value.noi-pos{color:#4ade80}
+.prop-stat-value.noi-neg{color:#f87171}
+.opt-card{background:#13253d;border-radius:12px;padding:20px;border:1px solid #1e3a5f;margin-bottom:16px;display:flex;gap:16px;align-items:flex-start}
+.opt-card.urgent{border-left:4px solid #f87171}
+.opt-card.savings{border-left:4px solid #4ade80}
+.opt-card.reminder{border-left:4px solid #60a5fa}
+.opt-card.warn{border-left:4px solid #fbbf24}
+.opt-icon{font-size:24px;flex-shrink:0}
+.opt-body{flex:1}
+.opt-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:6px}
+.opt-desc{font-size:13px;color:#8899aa;line-height:1.6}
+.opt-savings{font-size:13px;color:#4ade80;font-weight:600;margin-top:8px}
+.opt-action{font-size:12px;color:#60a5fa;margin-top:6px}
+.review-group{margin-bottom:28px}
+.review-group-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:12px;padding:10px 16px;background:#0d1b2e;border-radius:8px;display:flex;align-items:center;gap:8px}
+.review-row{background:#13253d;border-radius:8px;padding:14px 16px;margin-bottom:8px;border:1px solid #1e3a5f;position:relative}
+.review-row.edited{border-left:4px solid #60a5fa}
+.review-row-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.review-date{font-size:12px;color:#8899aa;min-width:80px}
+.review-desc{font-size:14px;font-weight:600;color:#fff;flex:1}
+.review-amount{font-size:15px;font-weight:700;color:#f87171;min-width:80px;text-align:right}
+.review-why{font-size:12px;color:#fbbf24;margin-top:8px;padding:8px 12px;background:#2d1f0e;border-radius:6px}
+.review-edit-row{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.review-select{background:#0d1b2e;border:1px solid #2d3d5a;color:#e8eaf0;border-radius:6px;padding:5px 8px;font-size:12px}
+.review-input{background:#0d1b2e;border:1px solid #2d3d5a;color:#e8eaf0;border-radius:6px;padding:5px 8px;font-size:12px;width:200px}
+.review-btn{background:#1e3a5f;border:1px solid #2d5a8f;color:#e8eaf0;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer}
+.review-btn:hover{background:#2d4a6f}
+.review-btn.resolve{background:#0e2d1a;border-color:#14532d;color:#4ade80}
+.resolve-btn:hover{background:#1e4d2a}
+.pending-counter{background:#c9a84c;color:#0d1b2e;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;display:inline-block;margin-right:12px}
+.copy-btn{background:#1e3a5f;border:1px solid #2d5a8f;color:#60a5fa;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.copy-btn:hover{background:#2d4a6f}
+.section-header-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center}
+.filter-btn{background:#13253d;border:1px solid #1e3a5f;color:#8899aa;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer}
+.filter-btn.active{background:#1e3a5f;color:#c9a84c;border-color:#c9a84c}
+.filter-btn:hover{color:#c9a84c}
+.search-input{background:#13253d;border:1px solid #1e3a5f;color:#e8eaf0;border-radius:6px;padding:7px 14px;font-size:13px;min-width:240px}
+.search-input:focus{outline:none;border-color:#c9a84c}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #1e3a5f}
+.total-row td{font-weight:700;color:#c9a84c;background:#0d1b2e !important;border-top:2px solid #2d3d5a}
+.utility-group-header{background:#0d1b2e;color:#c9a84c;font-size:13px;font-weight:700;padding:10px 12px;text-transform:uppercase;letter-spacing:.5px}
+.collapsible-toggle{cursor:pointer;user-select:none}
+.collapsible-toggle:hover{color:#c9a84c}
+.collapsible-content{display:none}
+.collapsible-content.open{display:block}
+.how-to-card{background:#13253d;border-radius:12px;padding:28px;border:1px solid #1e3a5f;margin-bottom:20px}
+.how-to-title{font-size:18px;font-weight:700;color:#c9a84c;margin-bottom:6px}
+.how-to-sub{font-size:13px;color:#8899aa;margin-bottom:20px}
+.step-list{list-style:none}
+.step-list li{display:flex;gap:14px;margin-bottom:14px;padding:12px 16px;background:#0d1b2e;border-radius:8px;align-items:flex-start}
+.step-num{background:#c9a84c;color:#0d1b2e;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.step-text{font-size:13px;color:#e8eaf0;line-height:1.6}
+.step-text strong{color:#c9a84c}
+.income-source-list{list-style:none}
+.income-source-list li{padding:8px 16px;border-bottom:1px solid #1a2d4a;font-size:13px;color:#e8eaf0}
+.income-source-list li:last-child{border-bottom:none}
+.income-source-list span{color:#4ade80;font-weight:600;float:right}
+.note-banner{background:#0e1d3d;border:1px solid #1e3a7f;border-radius:8px;padding:12px 16px;font-size:13px;color:#60a5fa;margin-bottom:16px}
+.warn-row td{background:#3d2a0e !important}
+.warn-row td:first-child::before{content:"⚠️ ";font-size:12px}
+canvas{max-height:320px}
+@media(max-width:768px){.chart-row{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}.tab-btn{padding:10px 14px;font-size:12px}}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="logo">Ferrara Group <span>Real Estate Dashboard</span></div>
+  <div class="timestamp">📅 As of Feb 24, 2026 · Data partially complete (Feb checking pending)</div>
+</div>
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('overview')">📊 Overview</button>
+  <button class="tab-btn" onclick="showTab('properties')">🏠 Properties P&L</button>
+  <button class="tab-btn" onclick="showTab('expenses')">💸 Expenses</button>
+  <button class="tab-btn" onclick="showTab('utilities')">⚡ Utilities</button>
+  <button class="tab-btn" onclick="showTab('vendors')">🤝 Vendors</button>
+  <button class="tab-btn" onclick="showTab('review')" id="tab-review">🔴 Needs Review</button>
+  <button class="tab-btn" onclick="showTab('optimize')">💰 Optimize</button>
+  <button class="tab-btn" onclick="showTab('howto')">📋 How to Update</button>
+</div>
+
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview" class="tab-content active">
+  <div class="warning-banner" onclick="showTab('review')">
+    <span style="font-size:24px">⚠️</span>
+    <div>
+      <div class="warning-text">Transactions Need Review — Click to Resolve</div>
+      <div class="warning-sub">Multiple items need property assignment · Amazon charges (82) · Unusual amounts · Duplicate billing detected</div>
+    </div>
+    <span style="margin-left:auto;color:#fbbf24;font-weight:700">View All →</span>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-label">📂 Data Completeness: Jan 2026 ✅ Complete &nbsp;|&nbsp; Feb 2026 ⚠️ Checking statement not yet received · PadSplit thru 2/24 only · Airbnb payouts arrive in March</div>
+    <div class="progress-track"><div class="progress-fill" style="width:65%"></div></div>
+    <div style="font-size:12px;color:#8899aa;margin-top:6px">~65% complete for Feb 2026 — income figures are estimates; expense totals will update when Feb checking arrives</div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-green">
+      <div class="kpi-label">Total Income (Jan + Feb)</div>
+      <div class="kpi-value">$79,240</div>
+      <div class="kpi-sub">Jan $36,863 · Feb $42,377 est.</div>
+    </div>
+    <div class="kpi-card kpi-red">
+      <div class="kpi-label">Total Expenses (Jan known)</div>
+      <div class="kpi-value">$31,500+</div>
+      <div class="kpi-sub">Jan mortgages + utilities + vendors · Feb incomplete</div>
+    </div>
+    <div class="kpi-card kpi-gold">
+      <div class="kpi-label">PadSplit Income (Jan)</div>
+      <div class="kpi-value">$15,726</div>
+      <div class="kpi-sub">5 properties · $366 Grandview (new, ramping)</div>
+    </div>
+    <div class="kpi-card kpi-gold">
+      <div class="kpi-label">PadSplit Income (Feb est.)</div>
+      <div class="kpi-value">$16,237</div>
+      <div class="kpi-sub">thru 2/24 only · final TBD</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Long-Term Rent (Monthly)</div>
+      <div class="kpi-value">$8,516</div>
+      <div class="kpi-sub">Mesa $2,114 · 13th $2,480 · Isaiah $904 · Michael $980 · Terrie $964</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Grandview (New) Income</div>
+      <div class="kpi-value">$8,638</div>
+      <div class="kpi-sub">PadSplit + Airbnb + Jarrett + Omar · Feb est.</div>
+    </div>
+  </div>
+
+  <div class="note-banner">ℹ️ <strong>Note:</strong> Income totals are partially unassigned. PadSplit Feb numbers are through 2/24. Airbnb Feb payouts mostly arrive in March. Inter-company transfer ($7,500) and furniture reimbursement ($200) excluded from income.</div>
+
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">📈 Income vs Expenses by Property (Jan 2026)</div>
+      <canvas id="propIncomeChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🍩 Expense Breakdown by Category</div>
+      <canvas id="expenseDonut"></canvas>
+    </div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">📊 PadSplit Income — Jan vs Feb 2026</div>
+      <canvas id="padsplitChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">⚡ Monthly Utility Costs by Property</div>
+      <canvas id="utilityChart"></canvas>
+    </div>
+  </div>
+</div>
+
+
+<!-- EXPENSES TAB -->
+<div id="tab-expenses" class="tab-content">
+  <h2 style="color:#c9a84c;margin-bottom:16px">💸 All Transactions</h2>
+  <div class="filter-row">
+    <input class="search-input" id="expSearch" placeholder="🔍 Search description..." oninput="filterExpenses()">
+    <button class="filter-btn active" onclick="filterExpMonth(this,'all')">All Months</button>
+    <button class="filter-btn" onclick="filterExpMonth(this,'2025-12')">Dec 2025</button>
+    <button class="filter-btn" onclick="filterExpMonth(this,'2026-01')">Jan 2026</button>
+    <button class="filter-btn" onclick="filterExpMonth(this,'2026-02')">Feb 2026</button>
+    <select class="review-select" id="expCatFilter" onchange="filterExpenses()" style="padding:7px 10px;font-size:13px">
+      <option value="">All Categories</option>
+      <option>Mortgage/Loan Payments</option><option>Utilities - Electric</option><option>Utilities - Water</option>
+      <option>Utilities - Gas</option><option>Utilities - Internet</option><option>Utilities - Solar</option>
+      <option>Cleaning</option><option>Landscaping &amp; Junk Removal</option><option>Repairs &amp; Labor</option>
+      <option>Materials &amp; Supplies</option><option>Furnishings</option><option>Marketing &amp; Photography</option>
+      <option>Legal &amp; Professional</option><option>Insurance</option><option>Software &amp; Tech</option>
+      <option>Travel</option><option>Phone</option><option>Personal</option><option>Bank Fees &amp; Interest</option>
+      <option>VA &amp; Staff</option><option>Business General</option><option>Rent Income</option>
+    </select>
+    <select class="review-select" id="expPropFilter" onchange="filterExpenses()" style="padding:7px 10px;font-size:13px">
+      <option value="">All Properties</option>
+      <option>Mesa Unit 32</option><option>13th Ave</option><option>5th Dr</option><option>38th Dr</option>
+      <option>Janice Way</option><option>Grandview</option><option>25th St</option><option>Personal</option><option>Unassigned</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+  <table class="data-table" id="expTable">
+    <thead><tr>
+      <th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Property</th><th>Account</th><th>Flag</th>
+    </tr></thead>
+    <tbody id="expBody">
+    </tbody>
+    <tfoot><tr class="total-row"><td colspan="2">Showing Total</td><td id="expTotal">—</td><td colspan="4"></td></tr></tfoot>
+  </table>
+  </div>
+</div>
+
+<!-- UTILITIES TAB -->
+<div id="tab-utilities" class="tab-content">
+  <h2 style="color:#c9a84c;margin-bottom:16px">⚡ Utility Accounts</h2>
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-title">📊 Monthly Utility Costs by Property &amp; Type</div>
+    <canvas id="utilityStackChart" style="max-height:300px"></canvas>
+  </div>
+
+  <!-- Electric APS -->
+  <div class="card">
+    <div class="card-title" style="color:#fbbf24">⚡ APS Electric</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Jan 2026</th><th>Feb 2026</th><th>AutoPay</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Janice Way</td><td>$214.16</td><td>$289.08</td><td>~13th</td><td></td></tr>
+        <tr><td>5th Dr</td><td>$54.90</td><td>$64.00</td><td>~14th</td><td></td></tr>
+        <tr><td>Grandview</td><td>$59.25</td><td>$68.97</td><td>~15th</td><td></td></tr>
+        <tr><td>38th Dr</td><td>$76.82</td><td>$96.49</td><td>~5th</td><td></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Electric SRP -->
+  <div class="card">
+    <div class="card-title" style="color:#fbbf24">⚡ SRP Electric</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Jan 2026</th><th>Feb 2026</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr class="warn-row"><td>25th St</td><td>$292.64 (2 payments)</td><td>TBD</td><td>⚠️ HIGH — mini split scheduling needed before summer</td></tr>
+        <tr class="warn-row"><td>Willow Ave (Personal)</td><td>$190.50</td><td>TBD</td><td>⚠️ Should move to personal checking</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Gas -->
+  <div class="card">
+    <div class="card-title" style="color:#f97316">🔥 Southwest Gas</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Jan 2026</th><th>Feb 2026</th></tr></thead>
+      <tbody>
+        <tr><td>Janice Way</td><td>$95.47</td><td>$98.72</td></tr>
+        <tr><td>38th Dr</td><td>$89.90</td><td>$98.72</td></tr>
+        <tr><td>25th St</td><td>$63.65</td><td>$63.65</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Internet/Phone Cox -->
+  <div class="card">
+    <div class="card-title" style="color:#a855f7">🌐 Cox Internet &amp; Phone</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Monthly</th><th>AutoPay</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr class="warn-row"><td>Janice Way MAIN</td><td>$90.00</td><td>~1st</td><td>⚠️ Possible duplicate — call Cox to verify</td></tr>
+        <tr class="warn-row"><td>Janice Way DUPLICATE</td><td>$125.40</td><td>~10th</td><td>⚠️ DUPLICATE BILLING — Call Cox to CANCEL this account immediately!</td></tr>
+        <tr><td>38th Dr (bundle)</td><td>$16.04</td><td>~30th</td><td>Cancel when contract expires</td></tr>
+        <tr><td>25th St</td><td>$80.00</td><td>~24th</td><td></td></tr>
+        <tr><td>Grandview (internet)</td><td>$70.00</td><td>~18th</td><td></td></tr>
+        <tr><td>Grandview (phone bundle)</td><td>$16.37</td><td>~31st</td><td>Cancel when contract expires</td></tr>
+        <tr><td>5th Dr (internet)</td><td>$100.00</td><td>~5th</td><td>Highest rate — negotiate down</td></tr>
+        <tr><td>5th Dr (Cox Mobile)</td><td>$61.04</td><td>~5th</td><td>Personal cell, may be business deduction</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Water -->
+  <div class="card">
+    <div class="card-title" style="color:#38bdf8">💧 City of Phoenix Water (Feb 2026)</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Amount</th><th>Due Date</th></tr></thead>
+      <tbody>
+        <tr><td>Grandview</td><td>$78.50</td><td>Feb 25</td></tr>
+        <tr><td>38th Dr</td><td>$126.07</td><td>Mar 2</td></tr>
+        <tr><td>Janice Way</td><td>$109.14</td><td>Feb 17</td></tr>
+        <tr><td>5th Dr</td><td>$84.83</td><td>Mar 13</td></tr>
+        <tr><td>25th St</td><td>$104.91</td><td>Mar 3</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Solar -->
+  <div class="card">
+    <div class="card-title" style="color:#22c55e">☀️ Solar</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Provider</th><th>Monthly</th></tr></thead>
+      <tbody>
+        <tr><td>5th Dr</td><td>Sunrun</td><td style="color:#22c55e;font-weight:700">$93.00</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Estimated Monthly Utility Total by Property</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Electric</th><th>Gas</th><th>Internet</th><th>Water</th><th>Solar</th><th>Total/mo</th></tr></thead>
+      <tbody>
+        <tr><td>Mesa Unit 32</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>13th Ave</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>5th Dr</td><td>$59</td><td>—</td><td>$161</td><td>$85</td><td>$93</td><td><strong>$398</strong></td></tr>
+        <tr><td>38th Dr</td><td>$87</td><td>$94</td><td>$16</td><td>$126</td><td>—</td><td><strong>$323</strong></td></tr>
+        <tr><td>Janice Way</td><td>$252</td><td>$97</td><td>$215</td><td>$109</td><td>—</td><td><strong style="color:#f87171">$673 ⚠️</strong></td></tr>
+        <tr><td>25th St</td><td>$293</td><td>$64</td><td>$80</td><td>$105</td><td>—</td><td><strong style="color:#fbbf24">$542</strong></td></tr>
+        <tr><td>Grandview</td><td>$64</td><td>—</td><td>$86</td><td>$79</td><td>—</td><td><strong>$229</strong></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- VENDORS TAB -->
+<div id="tab-vendors" class="tab-content">
+  <h2 style="color:#c9a84c;margin-bottom:16px">🤝 Recurring Vendors</h2>
+  <div class="table-wrap">
+  <table class="data-table" id="vendorTable">
+    <thead><tr>
+      <th>Vendor</th><th>Category</th><th>Property</th><th>Jan 2026</th><th>Feb 2026</th><th>Txns</th><th>Notes</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><strong>ShellPoint Mortgage</strong></td><td><span class="badge badge-gray">Mortgage</span></td><td>38th Dr + 25th St</td><td>$5,015.19</td><td>$5,015.19</td><td>2</td><td></td></tr>
+      <tr><td><strong>Mountain America CU</strong></td><td><span class="badge badge-gray">Mortgage</span></td><td>13th Ave + Janice Way</td><td>$5,846.40</td><td>$5,846.40</td><td>2</td><td></td></tr>
+      <tr><td><strong>Capital Fund 1</strong></td><td><span class="badge badge-gray">Mortgage</span></td><td>Grandview</td><td>$3,763.00</td><td>$3,763.00</td><td>1</td><td>Refinancing in progress</td></tr>
+      <tr><td><strong>PennyMac</strong></td><td><span class="badge badge-gray">Mortgage</span></td><td>Mesa + 5th Dr</td><td>$3,544.26</td><td>$3,544.26</td><td>2</td><td></td></tr>
+      <tr><td><strong>Solace Cleaning</strong></td><td><span class="badge badge-blue">Cleaning</span></td><td>Multiple</td><td>$850</td><td>$850</td><td>4+</td><td>Regular cleaning service</td></tr>
+      <tr><td><strong>Juan Electric</strong></td><td><span class="badge badge-blue">Repairs &amp; Labor</span></td><td>Grandview, 25th St, 38th Dr</td><td>$1,540</td><td>—</td><td>4</td><td>Jan: Grandview setup + 25th St + 38th Dr</td></tr>
+      <tr><td><strong>Jonatan Landscaping</strong></td><td><span class="badge badge-blue">Landscaping</span></td><td>Grandview, Janice Way</td><td>$1,329.86</td><td>—</td><td>2</td><td>Patios, landscaping, irrigation</td></tr>
+      <tr><td><strong>Redbox+ Dumpsters</strong></td><td><span class="badge badge-blue">Landscaping</span></td><td>Multiple</td><td>—</td><td>—</td><td>—</td><td>Junk removal</td></tr>
+      <tr><td><strong>Home Depot</strong></td><td><span class="badge badge-amber">Materials</span></td><td>⚠️ Unassigned</td><td>—</td><td>—</td><td>82+</td><td>Pull HD Pro PO# list to assign properties</td></tr>
+      <tr><td><strong>Amazon</strong></td><td><span class="badge badge-amber">Materials</span></td><td>⚠️ Unassigned (82 txns)</td><td>—</td><td>—</td><td>82</td><td>Cross-ref order history for property assignment</td></tr>
+      <tr><td><strong>Cox Communications</strong></td><td><span class="badge badge-blue">Internet</span></td><td>Multiple</td><td>$558.85</td><td>$558.85</td><td>8</td><td>⚠️ Janice Way duplicate $125.40 — cancel!</td></tr>
+      <tr><td><strong>APS Electric</strong></td><td><span class="badge badge-blue">Utilities</span></td><td>Multiple</td><td>$405.13</td><td>$518.54</td><td>4</td><td></td></tr>
+      <tr><td><strong>Southwest Gas</strong></td><td><span class="badge badge-blue">Utilities</span></td><td>Multiple</td><td>$249.02</td><td>$261.09</td><td>3</td><td></td></tr>
+      <tr><td><strong>SRP Electric</strong></td><td><span class="badge badge-blue">Utilities</span></td><td>25th St + Personal</td><td>$483.14</td><td>TBD</td><td>3</td><td>⚠️ 25th St high; Willow Ave should be personal</td></tr>
+      <tr><td><strong>TechniArt</strong></td><td><span class="badge badge-amber">Software &amp; Tech</span></td><td>⚠️ Verify</td><td>$126.36</td><td>—</td><td>4</td><td>⚠️ 4 charges — only 1-2 thermostats ordered</td></tr>
+      <tr><td><strong>Gabriel Carpet</strong></td><td><span class="badge badge-blue">Repairs &amp; Labor</span></td><td>Janice Way</td><td>$320.90</td><td>—</td><td>1</td><td></td></tr>
+      <tr><td><strong>Terry CO-Living</strong></td><td><span class="badge badge-blue">Marketing</span></td><td>Grandview</td><td>$105.00</td><td>—</td><td>1</td><td>Flyers</td></tr>
+      <tr><td><strong>Sunrun Solar</strong></td><td><span class="badge badge-green">Solar</span></td><td>5th Dr</td><td>$93.00</td><td>$93.00</td><td>1</td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- NOTE: properties tab defined earlier in file -->
+<div id="tab-properties" class="tab-content">
+  <h2>
+  <div class="note-banner">ℹ️ Feb 2026 checking statement not yet received. Expense totals reflect Jan 2026 known expenses. Income totals include available Jan + Feb data.</div>
+
+  <!-- Mesa Unit 32 -->
+  <div class="prop-card green-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">Mesa Unit 32</div>
+        <div class="prop-address">125 N 22nd Pl #32, Mesa AZ · PennyMac · 4.5% · $1,124.78/mo</div>
+      </div>
+      <span class="badge badge-green">Long-Term Tenant</span>
+    </div>
+    <div class="prop-grid" style="margin-top:16px">
+      <div class="prop-stat"><div class="prop-stat-label">Mortgage</div><div class="prop-stat-value expense">$1,124.78</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Rent Income</div><div class="prop-stat-value income">$2,113.95</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Tenant</div><div class="prop-stat-value" style="font-size:14px">Riscardo Vizcarra</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value noi-pos">+$989</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Rate / Lender</div><div class="prop-stat-value" style="font-size:13px">4.5% · PennyMac</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Utilities</div><div class="prop-stat-value" style="font-size:14px">Tenant pays</div></div>
+    </div>
+  </div>
+
+  <!-- 13th Ave -->
+  <div class="prop-card green-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">13th Ave</div>
+        <div class="prop-address">17442 N 13th Ave, Phoenix AZ · Mountain America · 7.375% · $2,418.35/mo</div>
+      </div>
+      <span class="badge badge-green">Long-Term Tenant</span>
+    </div>
+    <div class="prop-grid" style="margin-top:16px">
+      <div class="prop-stat"><div class="prop-stat-label">Mortgage</div><div class="prop-stat-value expense">$2,418.35</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Rent Income</div><div class="prop-stat-value income">$2,480.00</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Tenant</div><div class="prop-stat-value" style="font-size:14px">Ian Decker</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value noi-pos">+$62</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Rate / Lender</div><div class="prop-stat-value" style="font-size:13px">7.375% · Mtn America</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Refi Opportunity</div><div class="prop-stat-value" style="font-size:12px;color:#fbbf24">Monitor rates</div></div>
+    </div>
+  </div>
+
+  <!-- 5th Dr -->
+  <div class="prop-card green-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">5th Dr (PadSplit)</div>
+        <div class="prop-address">19817 N 5th Dr, Phoenix AZ · PennyMac · 6.375% · $2,419.48/mo</div>
+      </div>
+      <span class="badge badge-gold">PadSplit</span>
+    </div>
+    <div class="prop-grid" style="margin-top:16px">
+      <div class="prop-stat"><div class="prop-stat-label">Mortgage</div><div class="prop-stat-value expense">$2,419.48</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Jan</div><div class="prop-stat-value income">$4,800</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Feb est.</div><div class="prop-stat-value income">$4,742</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Electric (APS)</div><div class="prop-stat-value expense">$54–$64</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Internet (Cox)</div><div class="prop-stat-value expense">$100/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Solar (Sunrun)</div><div class="prop-stat-value expense">$93/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Water</div><div class="prop-stat-value expense">$85/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value noi-pos">+$2,025</div></div>
+    </div>
+  </div>
+
+  <!-- 38th Dr -->
+  <div class="prop-card green-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">38th Dr (PadSplit + Selyna)</div>
+        <div class="prop-address">14802 N 38th Dr, Phoenix AZ · ShellPoint · 7.125% · $2,594.95/mo</div>
+      </div>
+      <span class="badge badge-gold">PadSplit + Direct</span>
+    </div>
+    <div class="prop-grid" style="margin-top:16px">
+      <div class="prop-stat"><div class="prop-stat-label">Mortgage</div><div class="prop-stat-value expense">$2,594.95</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Jan</div><div class="prop-stat-value income">$3,628</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Feb est.</div><div class="prop-stat-value income">$3,177</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Selyna (Rm 4) Jan</div><div class="prop-stat-value income">$1,125</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Selyna (Rm 4) Feb ⚠️</div><div class="prop-stat-value" style="color:#fbbf24">$515 (partial)</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Electric (APS)</div><div class="prop-stat-value expense">$77–$96</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Gas (SW Gas)</div><div class="prop-stat-value expense">$90–$99</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Water</div><div class="prop-stat-value expense">$126/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value noi-pos">+$1,800+</div></div>
+    </div>
+  </div>
+
+  <!-- Janice Way -->
+  <div class="prop-card amber-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">Janice Way (PadSplit + Airbnb + RP)</div>
+        <div class="prop-address">2302 E Janice Way, Phoenix AZ · Mountain America · 6.75% · $3,428.05/mo</div>
+      </div>
+      <span class="badge badge-amber">⚠️ Duplicate Cox Billing</span>
+    </div>
+    <div class="prop-grid" style="margin-top:16px">
+      <div class="prop-stat"><div class="prop-stat-label">Mortgage</div><div class="prop-stat-value expense">$3,428.05</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Jan</div><div class="prop-stat-value income">$2,683</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Feb est.</div><div class="prop-stat-value income">$2,259</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Airbnb Feb (2 rooms)</div><div class="prop-stat-value income">$2,739</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Rent Perfect (2 rooms)</div><div class="prop-stat-value income">$1,944</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Electric (APS)</div><div class="prop-stat-value expense">$214–$289</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Gas (SW Gas)</div><div class="prop-stat-value expense">$95–$99</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Internet (Cox ×2)</div><div class="prop-stat-value expense" style="color:#f87171">$215 ⚠️ Dup!</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Water</div><div class="prop-stat-value expense">$109/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value noi-pos">+$2,900+</div></div>
+    </div>
+  </div>
+
+  <!-- 25th St -->
+  <div class="prop-card amber-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">25th St (PadSplit + Airbnb + RP)</div>
+        <div class="prop-address">8229 S 25th St, Phoenix AZ · ShellPoint · 7.125% · $2,420.24/mo</div>
+      </div>
+      <span class="badge badge-amber">⚠️ High Electric Bill</span>
+    </div>
+    <div class="prop-grid" style="margin-top:16px">
+      <div class="prop-stat"><div class="prop-stat-label">Mortgage</div><div class="prop-stat-value expense">$2,420.24</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Jan</div><div class="prop-stat-value income">$4,249</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Feb est.</div><div class="prop-stat-value income">$3,530</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Airbnb (Rm 7)</div><div class="prop-stat-value income">$1,236</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Isaiah Rm 6 (RP)</div><div class="prop-stat-value income">$904</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Electric (SRP) ⚠️</div><div class="prop-stat-value expense" style="color:#f87171">$293/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Gas (SW Gas)</div><div class="prop-stat-value expense">$64/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Internet (Cox)</div><div class="prop-stat-value expense">$80/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Water</div><div class="prop-stat-value expense">$105/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value noi-pos">+$2,200+</div></div>
+    </div>
+  </div>
+
+  <!-- Grandview -->
+  <div class="prop-card amber-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="prop-name">Grandview Rd (PadSplit + Airbnb + Direct)</div>
+        <div class="prop-address">4029 W Grandview Rd, Phoenix AZ · Capital Fund 1 · Refinancing 10.5%→6.75%</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-blue">🆕 New Property Jan 2026</span>
+        <span class="badge badge-amber">🔄 Refinancing in Progress</span>
+      </div>
+    </div>
+    <div class="note-banner" style="margin-top:12px">🔄 <strong>Refinancing in Progress:</strong> New loan $535,500 at 6.75% · P&amp;I $3,473.24 + $339 T/I/A = $3,812 total/mo · Significant improvement from current 10.5% I/O</div>
+    <div class="prop-grid" style="margin-top:12px">
+      <div class="prop-stat"><div class="prop-stat-label">Current Mortgage</div><div class="prop-stat-value expense">$3,763/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">New Payment (post-refi)</div><div class="prop-stat-value" style="color:#fbbf24">$3,812/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Jan (ramping)</div><div class="prop-stat-value income">$366</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">PadSplit Feb est.</div><div class="prop-stat-value income">$2,529</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Airbnb (Rm 8-9)</div><div class="prop-stat-value income">$2,742</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Jarrett (Rm 5)</div><div class="prop-stat-value income">$1,200/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Omar (Rm 1)</div><div class="prop-stat-value income">$1,800</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Electric (APS)</div><div class="prop-stat-value expense">$59–$69</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Internet (Cox)</div><div class="prop-stat-value expense">$70/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Water</div><div class="prop-stat-value expense">$79/mo</div></div>
+      <div class="prop-stat"><div class="prop-stat-label">Est. Monthly NOI</div><div class="prop-stat-value" style="color:#fbbf24">Ramping Up</div></div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- NEEDS REVIEW TAB -->
+<div id="tab-review" class="tab-content">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+    <h2 style="color:#c9a84c">🔴 Needs Review</h2>
+    <span class="pending-counter" id="pendingCount">Pending Changes: 0</span>
+    <button class="copy-btn" onclick="copyChangesSummary()">📋 Copy Changes Summary</button>
+  </div>
+  <div class="note-banner" style="border-color:#f87171">🔴 Total unresolved value: <strong id="unresolvedTotal">calculating...</strong> · Resolve items below and click "Copy Changes Summary" to send updates for processing.</div>
+
+  <div class="review-group">
+    <div class="review-group-title">🔴 Needs Property Assignment — Unassigned Expenses</div>
+    <div class="review-row" id="rr-hd1" data-amount="482.35">
+      <div class="review-row-header">
+        <span class="review-date">Jan 2026</span>
+        <span class="review-desc">Home Depot — Multiple charges</span>
+        <span class="review-amount">$482.35</span>
+        <span class="badge badge-red" id="status-hd1">Needs Review</span>
+      </div>
+      <div class="review-why">We couldn't figure out which property these Home Depot charges belong to — please pull your HD Pro account PO# list and assign them. Each PO# = a property address.</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-hd1"><option>Materials &amp; Supplies</option><option>Repairs &amp; Labor</option><option>Furnishings</option></select>
+        <select class="review-select" id="prop-hd1"><option value="">— Assign Property —</option><option>Mesa Unit 32</option><option>13th Ave</option><option>5th Dr</option><option>38th Dr</option><option>Janice Way</option><option>Grandview</option><option>25th St</option><option>Personal</option><option>Multiple (see notes)</option></select>
+        <input class="review-input" id="notes-hd1" placeholder="Notes...">
+        <button class="review-btn" onclick="editRow('hd1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('hd1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+
+    <div class="review-row" id="rr-zelle1" data-amount="0">
+      <div class="review-row-header">
+        <span class="review-date">Feb 2026</span>
+        <span class="review-desc">Zelle: Omar Hamad $1,800 — Grandview Rm 1</span>
+        <span class="review-amount" style="color:#4ade80">+$1,800.00</span>
+        <span class="badge badge-blue" id="status-zelle1">Updated</span>
+      </div>
+      <div class="review-why">Omar Hamad paid $1,800 via Zelle. Confirmed: this is rent for Grandview Room 1 through 3/28/2026. Please verify this is correctly categorized as rental income.</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-zelle1"><option>Rent Income</option></select>
+        <select class="review-select" id="prop-zelle1"><option>Grandview</option></select>
+        <input class="review-input" id="notes-zelle1" placeholder="Notes..." value="Omar Hamad - Grandview Rm 1, through 3/28/2026">
+        <button class="review-btn" onclick="editRow('zelle1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('zelle1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="review-group">
+    <div class="review-group-title">⚠️ Verify Amount / Unusual Transactions</div>
+
+    <div class="review-row" id="rr-tech1" data-amount="126.36">
+      <div class="review-row-header">
+        <span class="review-date">Jan 2026</span>
+        <span class="review-desc">TechniArt × 4 charges ($31.59 × 4)</span>
+        <span class="review-amount">$126.36</span>
+        <span class="badge badge-red" id="status-tech1">Needs Review</span>
+      </div>
+      <div class="review-why">4 TechniArt charges found ($31.59 × 4 = $126.36) but you said you only ordered 1–2 thermostats. Are these a subscription, duplicates, or separate units for different rooms? Review and cancel if it's an unwanted subscription.</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-tech1"><option>Software &amp; Tech</option><option>Materials &amp; Supplies</option></select>
+        <select class="review-select" id="prop-tech1"><option value="">— Assign Property —</option><option>Mesa Unit 32</option><option>13th Ave</option><option>5th Dr</option><option>38th Dr</option><option>Janice Way</option><option>Grandview</option><option>25th St</option><option>Personal</option></select>
+        <input class="review-input" id="notes-tech1" placeholder="Subscription? Duplicates? Which property?">
+        <button class="review-btn" onclick="editRow('tech1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('tech1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+
+    <div class="review-row" id="rr-sel1" data-amount="52.50">
+      <div class="review-row-header">
+        <span class="review-date">Feb 6, 2026</span>
+        <span class="review-desc">Selyna Venmo — 38th Dr Rm 4 (unusually low)</span>
+        <span class="review-amount" style="color:#fbbf24">$52.50</span>
+        <span class="badge badge-red" id="status-sel1">Needs Review</span>
+      </div>
+      <div class="review-why">Selyna's February 6th payment of $52.50 is much less than her usual $462.50 semi-monthly base amount. Is this a partial payment, a late fee only, or did she pay the rest a different way this period?</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-sel1"><option>Rent Income</option></select>
+        <select class="review-select" id="prop-sel1"><option>38th Dr</option></select>
+        <input class="review-input" id="notes-sel1" placeholder="Partial payment? Late fee only? Other explanation?">
+        <button class="review-btn" onclick="editRow('sel1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('sel1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+
+    <div class="review-row" id="rr-ml1" data-amount="206">
+      <div class="review-row-header">
+        <span class="review-date">Jan 2026</span>
+        <span class="review-desc">Cash Advance — $206</span>
+        <span class="review-amount">$206.00</span>
+        <span class="badge badge-red" id="status-ml1">Needs Review</span>
+      </div>
+      <div class="review-why">A $206 cash advance appeared on the credit card. Cash advances carry high fees and interest from day one. What was this for, and which property/category should it be assigned to?</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-ml1"><option>Bank Fees &amp; Interest</option><option>Repairs &amp; Labor</option><option>Personal</option><option>Business General</option></select>
+        <select class="review-select" id="prop-ml1"><option value="">— Assign Property —</option><option>Mesa Unit 32</option><option>13th Ave</option><option>5th Dr</option><option>38th Dr</option><option>Janice Way</option><option>Grandview</option><option>25th St</option><option>Personal</option></select>
+        <input class="review-input" id="notes-ml1" placeholder="What was this advance for?">
+        <button class="review-btn" onclick="editRow('ml1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('ml1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+
+    <div class="review-row" id="rr-cox1" data-amount="125.40">
+      <div class="review-row-header">
+        <span class="review-date">Monthly</span>
+        <span class="review-desc">Cox Internet — Janice Way 701 Account (Possible Duplicate)</span>
+        <span class="review-amount">$125.40</span>
+        <span class="badge badge-red" id="status-cox1">Needs Review</span>
+      </div>
+      <div class="review-why">This Cox account may be a duplicate billing at Janice Way — you're paying for two internet accounts at the same address ($90 + $125.40 = $215.40/mo). Call Cox to confirm which account is active and cancel the duplicate. Save ~$125/mo = $1,500/yr.</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-cox1"><option>Utilities - Internet</option></select>
+        <select class="review-select" id="prop-cox1"><option>Janice Way</option></select>
+        <input class="review-input" id="notes-cox1" placeholder="Called Cox? Cancelled? Notes...">
+        <button class="review-btn" onclick="editRow('cox1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('cox1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+
+    <div class="review-row" id="rr-srp1" data-amount="190.50">
+      <div class="review-row-header">
+        <span class="review-date">Jan 2026</span>
+        <span class="review-desc">SRP Electric — Willow Ave (Primary Residence on Business Account)</span>
+        <span class="review-amount">$190.50</span>
+        <span class="badge badge-red" id="status-srp1">Needs Review</span>
+      </div>
+      <div class="review-why">This SRP payment is for Willow Ave, your primary residence — not a rental property. It's being paid from the business checking account. Call SRP and change the payment account to your personal checking to keep business and personal expenses separate.</div>
+      <div class="review-edit-row">
+        <select class="review-select" id="cat-srp1"><option>Personal</option><option>Utilities - Electric</option></select>
+        <select class="review-select" id="prop-srp1"><option>Personal</option></select>
+        <input class="review-input" id="notes-srp1" placeholder="Called SRP to switch to personal checking?">
+        <button class="review-btn" onclick="editRow('srp1')">✏️ Save Edit</button>
+        <button class="review-btn resolve" onclick="resolveRow('srp1')">✅ Mark Resolved</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="review-group">
+    <div class="review-group-title collapsible-toggle" onclick="toggleCollapsible('amazon-group')">
+      📦 Amazon Orders — Need Property Assignment (82 transactions) — Click to Expand ▼
+    </div>
+    <div id="amazon-group" class="collapsible-content">
+      <div class="note-banner">These 82 Amazon transactions need to be matched to Amazon order history to determine which property each purchase was for. Go to Amazon Business → Orders → Export CSV for Jan–Feb 2026 and upload to Tasklet for automatic assignment.</div>
+      <div class="review-row" id="rr-amz1" data-amount="1640">
+        <div class="review-row-header">
+          <span class="review-date">Jan–Feb 2026</span>
+          <span class="review-desc">Amazon — 82 transactions (estimated total ~$1,640+)</span>
+          <span class="review-amount">~$1,640+</span>
+          <span class="badge badge-red" id="status-amz1">Needs Review</span>
+        </div>
+        <div class="review-why">82 Amazon purchases across Jan–Feb 2026 need property assignment. Cross-reference your Amazon order history — item descriptions usually make it clear which property they're for (bathroom fixtures, mattresses, cleaning supplies, etc.).</div>
+        <div class="review-edit-row">
+          <input class="review-input" id="notes-amz1" placeholder="Upload Amazon CSV to Tasklet for auto-assignment..." style="width:350px">
+          <button class="review-btn resolve" onclick="resolveRow('amz1')">✅ Mark All Resolved (after upload)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="review-group">
+    <div class="review-group-title collapsible-toggle" onclick="toggleCollapsible('resolved-group')">
+      ✅ Already Resolved — Click to Expand ▼
+    </div>
+    <div id="resolved-group" class="collapsible-content">
+      <div id="resolvedContainer" style="color:#8899aa;font-size:13px;padding:12px">No items resolved yet. Use ✅ buttons above to mark items resolved.</div>
+    </div>
+  </div>
+</div>
+
+<!-- OPTIMIZE TAB -->
+<div id="tab-optimize" class="tab-content">
+  <h2 style="color:#c9a84c;margin-bottom:20px">💰 Optimize — Savings &amp; Action Items</h2>
+  <h3 style="color:#f87171;margin-bottom:12px">🔴 URGENT</h3>
+
+  <div class="opt-card urgent">
+    <div class="opt-icon">🌐</div>
+    <div class="opt-body">
+      <div class="opt-title">Janice Way — Double Cox Billing</div>
+      <div class="opt-desc">Two Cox internet accounts at the same address: $90/mo (main) + $125.40/mo (701 account) = $215.40/mo total. You are paying for two internet connections at one property.</div>
+      <div class="opt-savings">💰 Save ~$125/mo = $1,500/yr — Call Cox to cancel the 701 account NOW</div>
+      <div class="opt-action">📞 Action: Call Cox Business, identify the duplicate 701 account at 2302 E Janice Way, confirm main service working, cancel duplicate</div>
+    </div>
+    <span class="badge badge-red">URGENT</span>
+  </div>
+
+  <div class="opt-card urgent">
+    <div class="opt-icon">⚡</div>
+    <div class="opt-body">
+      <div class="opt-title">25th St Electric Bill Too High — Mini Split Scheduling Before Summer</div>
+      <div class="opt-desc">SRP electric at 25th St is significantly higher than comparable PadSplit properties. Each room has its own mini split. Without schedules, residents leave them running on low temps all day. Set auto-off schedules NOW before summer heat arrives and bills double.</div>
+      <div style="background:#0d1b2e;border-radius:8px;padding:12px;margin:10px 0;font-size:13px;color:#e8eaf0;line-height:1.8">
+        <strong style="color:#c9a84c">📅 Recommended Schedule:</strong><br>
+        • <strong>Weekdays 9am–4pm:</strong> Auto-off (most residents are out)<br>
+        • <strong>Nights:</strong> Set to 74°F minimum, not 68°F — saves ~30%<br>
+        • <strong>Vacant rooms:</strong> Turn off or set to 85°F<br>
+        • <strong>Summer prep (before June):</strong> Replace filters, check refrigerant
+      </div>
+      <div class="opt-savings">💰 Save $40–80/mo = $480–960/yr</div>
+      <div class="opt-action">📱 Action: Message all 25th St residents this week with new schedule policy</div>
+    </div>
+    <span class="badge badge-red">URGENT</span>
+  </div>
+
+  <div class="opt-card urgent">
+    <div class="opt-icon">🏠</div>
+    <div class="opt-body">
+      <div class="opt-title">SRP Willow Ave — Move to Personal Checking</div>
+      <div class="opt-desc">The SRP electric bill for Willow Ave (primary residence) is being paid from the business checking account. This creates bookkeeping issues and tax complications.</div>
+      <div class="opt-savings">✅ Fix bookkeeping · Avoid tax issues</div>
+      <div class="opt-action">📞 Action: Call SRP, update payment account for Willow Ave to personal checking</div>
+    </div>
+    <span class="badge badge-amber">Action Needed</span>
+  </div>
+
+  <h3 style="color:#4ade80;margin:24px 0 12px">💰 SAVINGS OPPORTUNITIES</h3>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">📞</div>
+    <div class="opt-body">
+      <div class="opt-title">Cox Contract Expiration — Multi-Property Renegotiation</div>
+      <div class="opt-desc">Check expiry on all Cox accounts. You have 5+ Cox accounts — that's leverage for a multi-property bundle discount. Most ISPs offer 20–30% off to retain business customers with multiple accounts.</div>
+      <div class="opt-savings">💰 Potential 20–30% off all accounts = $100–150/mo savings</div>
+    </div>
+    <span class="badge badge-green">Savings</span>
+  </div>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">🌐</div>
+    <div class="opt-body">
+      <div class="opt-title">5th Dr Cox Internet $100/mo — Negotiate Down</div>
+      <div class="opt-desc">5th Dr Cox is $100/mo, highest of all properties. Others pay $70–80/mo. Call to negotiate.</div>
+      <div class="opt-savings">💰 Potential savings $20–30/mo = $240–360/yr</div>
+    </div>
+    <span class="badge badge-green">Savings</span>
+  </div>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">📵</div>
+    <div class="opt-body">
+      <div class="opt-title">Grandview Phone Bundle $16.37/mo — Cancel When Contract Expires</div>
+      <div class="opt-desc">Cox phone bundle at Grandview — cancel when contract expires if landline unused.</div>
+      <div class="opt-savings">💰 Save $196/yr</div>
+    </div>
+    <span class="badge badge-green">Savings</span>
+  </div>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">📵</div>
+    <div class="opt-body">
+      <div class="opt-title">38th Dr Phone Bundle $16.04/mo — Cancel When Contract Expires</div>
+      <div class="opt-desc">Cox phone bundle at 38th Dr — cancel when contract expires if landline unused.</div>
+      <div class="opt-savings">💰 Save $193/yr</div>
+    </div>
+    <span class="badge badge-green">Savings</span>
+  </div>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">📱</div>
+    <div class="opt-body">
+      <div class="opt-title">Cox Mobile $61.04/mo — Classify as Business Phone (Tax Deduction)</div>
+      <div class="opt-desc">Cox Mobile cell phone ($61.04/mo billed to 5th Dr) — if used for property management, may qualify as business phone expense deduction.</div>
+      <div class="opt-savings">💰 ~$732/yr potential deduction — Ask accountant to classify as Phone category</div>
+    </div>
+    <span class="badge badge-green">Savings</span>
+  </div>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">🏦</div>
+    <div class="opt-body">
+      <div class="opt-title">Grandview Refinancing — Approved! 🎉</div>
+      <div class="opt-desc">Refinancing approved! Moving from 10.5% interest-only to 6.75% P&amp;I. New: $535,500 at 6.75% — P&amp;I $3,473.24 + $339 T/I/A = $3,812/mo total. Now building equity. Ensure smooth closing.</div>
+      <div class="opt-savings">✅ Lower rate · Building equity · Improved cash position</div>
+    </div>
+    <span class="badge badge-blue">In Progress</span>
+  </div>
+
+  <div class="opt-card savings">
+    <div class="opt-icon">📊</div>
+    <div class="opt-body">
+      <div class="opt-title">13th Ave at 7.375% — Monitor for Refinance Opportunity</div>
+      <div class="opt-desc">13th Ave has a 7.375% Mountain America loan. Monitor rates — when they drop 0.5–1%, refinancing could save $100–200/mo.</div>
+      <div class="opt-savings">💰 Potential $100–200/mo when rates drop</div>
+    </div>
+    <span class="badge badge-gray">Monitor</span>
+  </div>
+
+  <h3 style="color:#60a5fa;margin:24px 0 12px">📋 MONTHLY WORKFLOW REMINDERS</h3>
+
+  <div class="opt-card reminder">
+    <div class="opt-icon">🏪</div>
+    <div class="opt-body">
+      <div class="opt-title">Pull Home Depot PO# List Monthly</div>
+      <div class="opt-desc">HD Pro account → Order History → Export with PO numbers. PO# = property address. Upload to Tasklet for automatic property assignment of all HD charges.</div>
+    </div>
+    <span class="badge badge-blue">Monthly</span>
+  </div>
+
+  <div class="opt-card reminder">
+    <div class="opt-icon">💸</div>
+    <div class="opt-body">
+      <div class="opt-title">Pull Zelle Transaction Report Monthly</div>
+      <div class="opt-desc">Chase Online → Zelle → Transaction History → Export with memo/notes. Memo = property address. Upload to Tasklet for auto-assignment.</div>
+    </div>
+    <span class="badge badge-blue">Monthly</span>
+  </div>
+
+  <div class="opt-card reminder">
+    <div class="opt-icon">🏠</div>
+    <div class="opt-body">
+      <div class="opt-title">Pull PadSplit CSV Monthly</div>
+      <div class="opt-desc">padsplit.com → Dashboard → Earnings → select month → Export CSV → extract zip → upload "collected" file to Tasklet.</div>
+    </div>
+    <span class="badge badge-blue">Monthly</span>
+  </div>
+
+  <div class="opt-card reminder">
+    <div class="opt-icon">✈️</div>
+    <div class="opt-body">
+      <div class="opt-title">Pull Airbnb Transaction History Monthly</div>
+      <div class="opt-desc">airbnb.com → Earnings → Transaction History → filter by month → Export CSV → upload to Tasklet.</div>
+    </div>
+    <span class="badge badge-blue">Monthly</span>
+  </div>
+
+  <div class="opt-card reminder">
+    <div class="opt-icon">📚</div>
+    <div class="opt-body">
+      <div class="opt-title">Import Historical Data (2023–2025) — One Time</div>
+      <div class="opt-desc">Ask accountant to export QuickBooks data: date, amount, vendor, category, property. Enables year-over-year analysis and teaches the system your accountant's exact category names.</div>
+    </div>
+    <span class="badge badge-gray">One-Time</span>
+  </div>
+
+  <h3 style="color:#fbbf24;margin:24px 0 12px">⚠️ NEEDS INVESTIGATION</h3>
+
+  <div class="opt-card warn">
+    <div class="opt-icon">🌡️</div>
+    <div class="opt-body">
+      <div class="opt-title">TechniArt — 4 Charges ($31.59 × 4 = $126.36)</div>
+      <div class="opt-desc">You were charged $31.59 by TechniArt four times but only ordered 1–2 thermostats. Possible subscription, duplicate billing, or 4 units for different rooms.</div>
+      <div class="opt-action">📋 Action: Check TechniArt account. Cancel subscription if not needed.</div>
+    </div>
+    <span class="badge badge-amber">Investigate</span>
+  </div>
+
+  <div class="opt-card warn">
+    <div class="opt-icon">💵</div>
+    <div class="opt-body">
+      <div class="opt-title">Cash Advance $206 — Review Purpose</div>
+      <div class="opt-desc">A $206 cash advance on the credit card. Cash advances carry high fees and interest from day one. Determine the purpose and correct category.</div>
+      <div class="opt-action">📋 Action: Review credit card statement. Categorize appropriately.</div>
+    </div>
+    <span class="badge badge-amber">Investigate</span>
+  </div>
+</div>
+
+<!-- HOW TO UPDATE TAB -->
+<div id="tab-howto" class="tab-content">
+  <h2 style="color:#c9a84c;margin-bottom:20px">📋 How to Update — Monthly Workflow</h2>
+
+  <div class="how-to-card">
+    <div class="how-to-title">📅 Every Month (1st–3rd): Upload Statements</div>
+    <div class="how-to-sub">Do this within the first 3 days of each month so your P&L report is ready by the 5th.</div>
+    <ul class="step-list">
+      <li><span class="step-num">1</span><div class="step-text">Log into <strong>Chase Online</strong> → Download statements for:<br>
+        • <strong>Chase Business Checking</strong> (main account)<br>
+        • <strong>Chase Southwest Card (7623)</strong><br>
+        • <strong>Chase Amazon Prime Card (8986)</strong></div></li>
+      <li><span class="step-num">2</span><div class="step-text"><strong>Upload all 3 files</strong> to Tasklet — drag and drop in the chat</div></li>
+      <li><span class="step-num">3</span><div class="step-text"><strong>Pull PadSplit CSV:</strong> padsplit.com → Dashboard → Earnings → select month → Export CSV → extract zip → upload <code style="background:#0d1b2e;padding:2px 6px;border-radius:4px">collected</code> file to Tasklet</div></li>
+      <li><span class="step-num">4</span><div class="step-text"><strong>Pull Airbnb Transaction History:</strong> airbnb.com → Earnings → Transaction History → filter by month → Export CSV → upload to Tasklet</div></li>
+      <li><span class="step-num">5</span><div class="step-text"><strong>Pull Home Depot PO# list</strong> (if HD purchases that month) — HD Pro → Order History → export with PO numbers → upload to Tasklet</div></li>
+      <li><span class="step-num">6</span><div class="step-text"><strong>Pull Zelle report</strong> from Chase with memo/notes field</div></li>
+    </ul>
+  </div>
+
+  <div class="how-to-card">
+    <div class="how-to-title">📊 On the 5th: Auto-Generated P&amp;L Report</div>
+    <div class="how-to-sub">Tasklet automatically generates your monthly P&amp;L report and emails it on the 5th of each month.</div>
+    <div class="note-banner">⏰ Upload by the 3rd to ensure the 5th report is complete.</div>
+  </div>
+
+  <div class="how-to-card">
+    <div class="how-to-title">💰 Income Sources to Reconcile Monthly</div>
+    <ul class="income-source-list">
+      <li><strong>PadSplit</strong> — Lump sum deposits by property. Use PadSplit CSV to break down. <span>5 properties</span></li>
+      <li><strong>Rent Perfect</strong> — Direct deposits (net of $3.95/tenant fee). Auto-matched by amount. <span>Mesa, 13th, Isaiah, Michael, Terrie</span></li>
+      <li><strong>Selyna (38th Dr Rm 4)</strong> — Venmo → manual transfer. Base $462.50 semi-monthly + $10/day late fees. <span>Bi-monthly</span></li>
+      <li><strong>Airbnb</strong> — Direct payouts. Long-stay bookings split into installments. Use export to match properties. <span>Multiple properties</span></li>
+      <li><strong>Jarrett / Jerrod Jesse (Grandview Rm 5)</strong> — Zelle as "Jerrod Contractor" — $1,200/mo <span>Monthly</span></li>
+      <li><strong>Omar Hamad (Grandview Rm 1)</strong> — Zelle — $1,800 through 3/28/2026 <span>Grandview</span></li>
+      <li><strong>Ian Decker (13th Ave)</strong> — Rent Perfect — $2,480/mo <span>Monthly</span></li>
+      <li><strong>Riscardo Vizcarra (Mesa Unit 32)</strong> — Rent Perfect or Zelle — $2,113.95/mo <span>Monthly</span></li>
+    </ul>
+  </div>
+
+  <div class="how-to-card" style="border-left:4px solid #4ade80">
+    <div class="how-to-title">🏠 Active Properties Quick Reference</div>
+    <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Property</th><th>Address</th><th>Lender</th><th>Rate</th><th>Payment</th><th>Income Type</th></tr></thead>
+      <tbody>
+        <tr><td>Mesa Unit 32</td><td>125 N 22nd Pl #32</td><td>PennyMac</td><td>4.5%</td><td>$1,124.78</td><td>Long-term (Riscardo)</td></tr>
+        <tr><td>13th Ave</td><td>17442 N 13th Ave</td><td>Mtn America</td><td>7.375%</td><td>$2,418.35</td><td>Long-term (Ian Decker)</td></tr>
+        <tr><td>5th Dr</td><td>19817 N 5th Dr</td><td>PennyMac</td><td>6.375%</td><td>$2,419.48</td><td>PadSplit</td></tr>
+        <tr><td>38th Dr</td><td>14802 N 38th Dr</td><td>ShellPoint</td><td>7.125%</td><td>$2,594.95</td><td>PadSplit + Selyna</td></tr>
+        <tr><td>Janice Way</td><td>2302 E Janice Way</td><td>Mtn America</td><td>6.75%</td><td>$3,428.05</td><td>PadSplit + Airbnb + RP</td></tr>
+        <tr><td>Grandview</td><td>4029 W Grandview Rd</td><td>Capital Fund 1</td><td>10.5%→6.75%</td><td>$3,763→$3,812</td><td>PadSplit + Airbnb + Zelle</td></tr>
+        <tr><td>25th St</td><td>8229 S 25th St</td><td>ShellPoint</td><td>7.125%</td><td>$2,420.24</td><td>PadSplit + Airbnb + RP</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Tab Switching ----
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('tab-' + id);
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + id + "'")) b.classList.add('active');
+  });
+}
+
+// ---- Collapsible ----
+function toggleCollapsible(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+// ---- LocalStorage for Review Items ----
+const STORAGE_KEY = 'ferrara_review_changes';
+function loadChanges() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveChanges(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  updatePendingCount();
+}
+function updatePendingCount() {
+  const data = loadChanges();
+  const count = Object.keys(data).length;
+  const el = document.getElementById('pendingCount');
+  if (el) el.textContent = 'Pending Changes: ' + count;
+}
+
+function editRow(id) {
+  const data = loadChanges();
+  const cat = document.getElementById('cat-' + id);
+  const prop = document.getElementById('prop-' + id);
+  const notes = document.getElementById('notes-' + id);
+  data[id] = {
+    category: cat ? cat.value : '',
+    property: prop ? prop.value : '',
+    notes: notes ? notes.value : '',
+    status: 'Updated',
+    ts: new Date().toISOString()
+  };
+  saveChanges(data);
+  const badge = document.getElementById('status-' + id);
+  if (badge) { badge.textContent = 'Updated'; badge.className = 'badge badge-blue'; }
+  const row = document.getElementById('rr-' + id);
+  if (row) row.classList.add('edited');
+}
+
+function resolveRow(id) {
+  const data = loadChanges();
+  const cat = document.getElementById('cat-' + id);
+  const prop = document.getElementById('prop-' + id);
+  const notes = document.getElementById('notes-' + id);
+  data[id] = {
+    category: cat ? cat.value : '',
+    property: prop ? prop.value : '',
+    notes: notes ? notes.value : '',
+    status: 'Resolved',
+    ts: new Date().toISOString()
+  };
+  saveChanges(data);
+  const badge = document.getElementById('status-' + id);
+  if (badge) { badge.textContent = 'Resolved'; badge.className = 'badge badge-green'; }
+  const row = document.getElementById('rr-' + id);
+  if (row) {
+    row.classList.add('edited');
+    row.style.opacity = '0.6';
+    // Move to resolved group
+    const rc = document.getElementById('resolvedContainer');
+    if (rc) {
+      if (rc.textContent.includes('No items')) rc.textContent = '';
+      const desc = row.querySelector('.review-desc');
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:8px 12px;border-bottom:1px solid #1a2d4a;font-size:13px;color:#4ade80';
+      div.textContent = '✅ ' + (desc ? desc.textContent : id) + ' — Resolved ' + new Date().toLocaleString();
+      rc.appendChild(div);
+    }
+  }
+}
+
+function copyChangesSummary() {
+  const data = loadChanges();
+  if (Object.keys(data).length === 0) {
+    alert('No changes recorded yet. Edit items in the Needs Review tab first.');
+    return;
+  }
+  let txt = 'FERRARA GROUP — REVIEW CHANGES SUMMARY
+';
+  txt += 'Generated: ' + new Date().toLocaleString() + '
+
+';
+  for (const [id, v] of Object.entries(data)) {
+    txt += '--- ' + id.toUpperCase() + ' ---
+';
+    txt += 'Status: ' + v.status + '
+';
+    if (v.category) txt += 'Category: ' + v.category + '
+';
+    if (v.property) txt += 'Property: ' + v.property + '
+';
+    if (v.notes) txt += 'Notes: ' + v.notes + '
+';
+    txt += '
+';
+  }
+  navigator.clipboard.writeText(txt).then(() => {
+    alert('Changes copied to clipboard! Paste into chat with Tasklet to process updates.');
+  }).catch(() => {
+    prompt('Copy this text:', txt);
+  });
+}
+
+// ---- Expense Table ----
+const expenses = [
+  {date:'2026-02-20',desc:'Selyna Venmo (38th Rm4)',amount:462.50,cat:'Rent Income',prop:'38th Dr',acct:'Venmo',review:0,income:true},
+  {date:'2026-02-20',desc:'Jerrod Jesse Zelle (Grandview Rm5)',amount:1200,cat:'Rent Income',prop:'Grandview',acct:'Checking',review:0,income:true},
+  {date:'2026-02-20',desc:'Omar Hamad Zelle (Grandview Rm1)',amount:1800,cat:'Rent Income',prop:'Grandview',acct:'Checking',review:1,income:true},
+  {date:'2026-02-13',desc:'Matthew Castle Airbnb (Janice Rm7)',amount:849.72,cat:'Rent Income',prop:'Janice Way',acct:'Airbnb',review:0,income:true},
+  {date:'2026-02-10',desc:'Davien Alston Airbnb Install 2 (Janice Rm3)',amount:1045.97,cat:'Rent Income',prop:'Janice Way',acct:'Airbnb',review:0,income:true},
+  {date:'2026-02-09',desc:'Davien Alston Airbnb Install 1 (Janice Rm3)',amount:843.86,cat:'Rent Income',prop:'Janice Way',acct:'Airbnb',review:0,income:true},
+  {date:'2026-02-09',desc:'Conor Hart Airbnb (25th St Rm7)',amount:1235.59,cat:'Rent Income',prop:'25th St',acct:'Airbnb',review:0,income:true},
+  {date:'2026-02-06',desc:'Selyna Venmo - FLAGGED low payment',amount:52.50,cat:'Rent Income',prop:'38th Dr',acct:'Venmo',review:1,income:true},
+  {date:'2026-02-05',desc:'Bljerim Ibraimi Airbnb (Grandview Rm8-9)',amount:2741.61,cat:'Rent Income',prop:'Grandview',acct:'Airbnb',review:0,income:true},
+  {date:'2026-02-01',desc:'APS Electric - Janice Way',amount:289.08,cat:'Utilities - Electric',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'Cox Internet - Janice Way MAIN',amount:90.00,cat:'Utilities - Internet',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'Cox Internet - Janice Way DUPLICATE ⚠️',amount:125.40,cat:'Utilities - Internet',prop:'Janice Way',acct:'Checking',review:1,income:false},
+  {date:'2026-02-01',desc:'Southwest Gas - Janice Way',amount:98.72,cat:'Utilities - Gas',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'Southwest Gas - 38th Dr',amount:98.72,cat:'Utilities - Gas',prop:'38th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'Southwest Gas - 25th St',amount:63.65,cat:'Utilities - Gas',prop:'25th St',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'APS Electric - 5th Dr',amount:64.00,cat:'Utilities - Electric',prop:'5th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'APS Electric - Grandview',amount:68.97,cat:'Utilities - Electric',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'APS Electric - 38th Dr',amount:96.49,cat:'Utilities - Electric',prop:'38th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-02-01',desc:'Riscardo Vizcarra Zelle (Mesa)',amount:2113.95,cat:'Rent Income',prop:'Mesa Unit 32',acct:'Checking',review:0,income:true},
+  {date:'2026-02-01',desc:'PadSplit Host Payment - 5th Dr (thru 2/24)',amount:4742.33,cat:'Rent Income',prop:'5th Dr',acct:'Checking',review:0,income:true},
+  {date:'2026-02-01',desc:'PadSplit Host Payment - Janice Way',amount:2258.60,cat:'Rent Income',prop:'Janice Way',acct:'Checking',review:0,income:true},
+  {date:'2026-02-01',desc:'PadSplit Host Payment - 38th Dr',amount:3177.07,cat:'Rent Income',prop:'38th Dr',acct:'Checking',review:0,income:true},
+  {date:'2026-02-01',desc:'PadSplit Host Payment - 25th St',amount:3529.91,cat:'Rent Income',prop:'25th St',acct:'Checking',review:0,income:true},
+  {date:'2026-02-01',desc:'PadSplit Host Payment - Grandview',amount:2528.92,cat:'Rent Income',prop:'Grandview',acct:'Checking',review:0,income:true},
+  {date:'2026-01-23',desc:'Selyna Venmo - Jan 2 w/ late fee',amount:625.00,cat:'Rent Income',prop:'38th Dr',acct:'Venmo',review:0,income:true},
+  {date:'2026-01-20',desc:'Jonatan Landscaping - Janice Way',amount:364.86,cat:'Landscaping & Junk Removal',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-01-20',desc:'Gabriel Carpet - Janice Way',amount:320.90,cat:'Repairs & Labor',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-01-20',desc:'Terry CO-Living - Grandview flyers',amount:105.00,cat:'Marketing & Photography',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-01-20',desc:'Juan Electric - Grandview final setup',amount:800.00,cat:'Repairs & Labor',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-01-20',desc:'Juan Electric - 25th St maintenance',amount:120.00,cat:'Repairs & Labor',prop:'25th St',acct:'Checking',review:0,income:false},
+  {date:'2026-01-20',desc:'Jerrod Jesse Zelle x2 (Grandview Rm5 partial)',amount:1120.00,cat:'Rent Income',prop:'Grandview',acct:'Checking',review:0,income:true},
+  {date:'2026-01-12',desc:'Jonatan Landscaping - Grandview patios',amount:965.00,cat:'Landscaping & Junk Removal',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-01-12',desc:'Juan Electric - 38th Dr fan rm4',amount:120.00,cat:'Repairs & Labor',prop:'38th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-01-09',desc:'Selyna Venmo - Jan payment',amount:500.00,cat:'Rent Income',prop:'38th Dr',acct:'Venmo',review:0,income:true},
+  {date:'2026-01-07',desc:'Shannon Couch - Grandview furniture',amount:50.00,cat:'Furnishings',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-01-05',desc:'Juan Electric - Grandview mini splits',amount:500.00,cat:'Repairs & Labor',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'PadSplit Host Payment - 5th Dr',amount:4800.13,cat:'Rent Income',prop:'5th Dr',acct:'Checking',review:0,income:true},
+  {date:'2026-01-01',desc:'PadSplit Host Payment - Janice Way',amount:2683.06,cat:'Rent Income',prop:'Janice Way',acct:'Checking',review:0,income:true},
+  {date:'2026-01-01',desc:'PadSplit Host Payment - 38th Dr',amount:3627.61,cat:'Rent Income',prop:'38th Dr',acct:'Checking',review:0,income:true},
+  {date:'2026-01-01',desc:'PadSplit Host Payment - 25th St',amount:4248.56,cat:'Rent Income',prop:'25th St',acct:'Checking',review:0,income:true},
+  {date:'2026-01-01',desc:'PadSplit Host Payment - Grandview (new)',amount:366.01,cat:'Rent Income',prop:'Grandview',acct:'Checking',review:0,income:true},
+  {date:'2026-01-01',desc:'APS Electric - Janice Way',amount:214.16,cat:'Utilities - Electric',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'APS Electric - 5th Dr',amount:54.90,cat:'Utilities - Electric',prop:'5th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'APS Electric - Grandview',amount:59.25,cat:'Utilities - Electric',prop:'Grandview',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'APS Electric - 38th Dr',amount:76.82,cat:'Utilities - Electric',prop:'38th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'SRP Electric - 25th St (2 payments)',amount:292.64,cat:'Utilities - Electric',prop:'25th St',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'SRP Electric - Willow Ave (personal)',amount:190.50,cat:'Personal',prop:'Personal',acct:'Checking',review:1,income:false},
+  {date:'2026-01-01',desc:'Southwest Gas - Janice Way',amount:95.47,cat:'Utilities - Gas',prop:'Janice Way',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'Southwest Gas - 38th Dr',amount:89.90,cat:'Utilities - Gas',prop:'38th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'Southwest Gas - 25th St',amount:63.65,cat:'Utilities - Gas',prop:'25th St',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'Sunrun Solar - 5th Dr',amount:93.00,cat:'Utilities - Solar',prop:'5th Dr',acct:'Checking',review:0,income:false},
+  {date:'2026-01-01',desc:'TechniArt x4 charges - VERIFY',amount:126.36,cat:'Software & Tech',prop:'',acct:'Credit Card',review:1,income:false},
+  {date:'2026-01-01',desc:'Amazon - Various (82 transactions)',amount:1640.00,cat:'Materials & Supplies',prop:'',acct:'Credit Card',review:1,income:false},
+  {date:'2026-01-01',desc:'Home Depot - Multiple charges',amount:482.35,cat:'Materials & Supplies',prop:'',acct:'Credit Card',review:1,income:false},
+];
+
+let currentMonth = 'all';
+let currentCat = '';
+let currentProp = '';
+
+function filterExpenses() {
+  const search = document.getElementById('expSearch').value.toLowerCase();
+  const cat = document.getElementById('expCatFilter').value;
+  const prop = document.getElementById('expPropFilter').value;
+  renderExpenses(search, cat, prop, currentMonth);
+}
+
+function filterExpMonth(btn, month) {
+  currentMonth = month;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterExpenses();
+}
+
+function renderExpenses(search, cat, prop, month) {
+  const tbody = document.getElementById('expBody');
+  if (!tbody) return;
+  let total = 0, rows = '';
+  const filtered = expenses.filter(e => {
+    if (month !== 'all' && !e.date.startsWith(month)) return false;
+    if (cat && e.cat !== cat) return false;
+    if (prop && e.prop !== prop) return false;
+    if (search && !e.desc.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  filtered.forEach(e => {
+    const cls = e.review ? 'needs-review' : (e.income ? 'income' : '');
+    const flag = e.review ? '<span class="badge badge-red">⚠️ Review</span>' : '';
+    const amt = e.income ? '<span style="color:#4ade80">+$' + e.amount.toFixed(2) + '</span>' : '$' + e.amount.toFixed(2);
+    if (!e.income) total += e.amount;
+    rows += '<tr class="' + cls + '"><td>' + e.date + '</td><td>' + e.desc + '</td><td>' + amt + '</td><td>' + e.cat + '</td><td>' + (e.prop || '<span style="color:#fbbf24">Unassigned</span>') + '</td><td>' + e.acct + '</td><td>' + flag + '</td></tr>';
+  });
+  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;color:#8899aa;padding:20px">No matching transactions</td></tr>';
+  const tot = document.getElementById('expTotal');
+  if (tot) tot.textContent = '$' + total.toFixed(2) + ' (expenses)';
+}
+
+// ---- Charts ----
+window.addEventListener('DOMContentLoaded', function() {
+  updatePendingCount();
+  renderExpenses('','','','all');
+  updateUnresolvedTotal();
+
+  // Chart defaults
+  Chart.defaults.color = '#8899aa';
+  Chart.defaults.borderColor = '#1e3a5f';
+
+  // Property Income vs Expenses Bar Chart
+  new Chart(document.getElementById('propIncomeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview','Mesa','13th Ave'],
+      datasets: [
+        {label:'Income (Jan)',data:[4800,4753,2683,4249,1486,2114,2480],backgroundColor:'rgba(74,222,128,0.8)'},
+        {label:'Expenses (Jan)',data:[2870,3060,4160,3270,5590,1125,2418],backgroundColor:'rgba(248,113,113,0.7)'}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0'}}},scales:{x:{ticks:{color:'#8899aa'}},y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()}}}}
+  });
+
+  // Expense Donut
+  new Chart(document.getElementById('expenseDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Mortgage','Electric','Gas','Internet','Water','Solar','Repairs','Landscaping','Cleaning','Other'],
+      datasets:[{data:[17849,1005,503,559,503,93,1540,1330,850,600],
+        backgroundColor:['#c9a84c','#fbbf24','#f97316','#a855f7','#38bdf8','#22c55e','#60a5fa','#4ade80','#f472b6','#94a3b8']}]
+    },
+    options:{responsive:true,plugins:{legend:{position:'right',labels:{color:'#e8eaf0',font:{size:11}}}}}
+  });
+
+  // PadSplit bar chart
+  new Chart(document.getElementById('padsplitChart'), {
+    type: 'bar',
+    data: {
+      labels: ['5th Dr','Janice Way','38th Dr','25th St','Grandview'],
+      datasets: [
+        {label:'January',data:[4800,2683,3628,4249,366],backgroundColor:'rgba(201,168,76,0.8)'},
+        {label:'February (est.)',data:[4742,2259,3177,3530,2529],backgroundColor:'rgba(96,165,250,0.7)'}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0'}}},scales:{x:{ticks:{color:'#8899aa'}},y:{ticks:{color:'#8899aa',callback:v=>'$'+v.toLocaleString()}}}}
+  });
+
+  // Overview Utility Chart
+  new Chart(document.getElementById('utilityChart'), {
+    type: 'bar',
+    data: {
+      labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview'],
+      datasets: [
+        {label:'Electric',data:[59,87,252,293,64],backgroundColor:'rgba(251,191,36,0.8)'},
+        {label:'Gas',data:[0,94,97,64,0],backgroundColor:'rgba(249,115,22,0.7)'},
+        {label:'Internet',data:[161,16,215,80,86],backgroundColor:'rgba(168,85,247,0.7)'},
+        {label:'Water',data:[85,126,109,105,79],backgroundColor:'rgba(56,189,248,0.7)'},
+        {label:'Solar',data:[93,0,0,0,0],backgroundColor:'rgba(34,197,94,0.8)'}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0',font:{size:11}}}},scales:{x:{stacked:true,ticks:{color:'#8899aa'}},y:{stacked:true,ticks:{color:'#8899aa',callback:v=>'$'+v}}}}
+  });
+
+  // Utility Stacked Chart (Utilities tab)
+  const utilCtx = document.getElementById('utilityStackChart');
+  if (utilCtx) {
+    new Chart(utilCtx, {
+      type: 'bar',
+      data: {
+        labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview'],
+        datasets: [
+          {label:'Electric',data:[59,87,252,293,64],backgroundColor:'#fbbf24'},
+          {label:'Gas',data:[0,94,97,64,0],backgroundColor:'#f97316'},
+          {label:'Internet',data:[161,16,215,80,86],backgroundColor:'#a855f7'},
+          {label:'Water',data:[85,126,109,105,79],backgroundColor:'#38bdf8'},
+          {label:'Solar',data:[93,0,0,0,0],backgroundColor:'#22c55e'}
+        ]
+      },
+      options:{responsive:true,plugins:{legend:{labels:{color:'#e8eaf0'}}},scales:{x:{stacked:true,ticks:{color:'#8899aa'}},y:{stacked:true,ticks:{color:'#8899aa',callback:v=>'$'+v}}}}
+    });
+  }
+
+  // Restore localStorage changes
+  restoreChanges();
+});
+
+function restoreChanges() {
+  const data = loadChanges();
+  for (const [id, v] of Object.entries(data)) {
+    const badge = document.getElementById('status-' + id);
+    if (badge) {
+      badge.textContent = v.status;
+      badge.className = v.status === 'Resolved' ? 'badge badge-green' : 'badge badge-blue';
+    }
+    const row = document.getElementById('rr-' + id);
+    if (row) row.classList.add('edited');
+    const notes = document.getElementById('notes-' + id);
+    if (notes && v.notes) notes.value = v.notes;
+    const prop = document.getElementById('prop-' + id);
+    if (prop && v.property) {
+      for (let o of prop.options) { if (o.value === v.property) o.selected = true; }
+    }
+    const cat = document.getElementById('cat-' + id);
+    if (cat && v.category) {
+      for (let o of cat.options) { if (o.value === v.category) o.selected = true; }
+    }
+  }
+}
+
+function updateUnresolvedTotal() {
+  const rows = document.querySelectorAll('.review-row[data-amount]');
+  let total = 0;
+  rows.forEach(r => {
+    const id = r.id.replace('rr-','');
+    const data = loadChanges();
+    if (!data[id] || data[id].status !== 'Resolved') {
+      total += parseFloat(r.getAttribute('data-amount') || 0);
+    }
+  });
+  const el = document.getElementById('unresolvedTotal');
+  if (el) el.textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits:2});
+}
+</script>
+</body>
+</html>
