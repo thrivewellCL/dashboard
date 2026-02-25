@@ -168,6 +168,7 @@ canvas{max-height:320px}
   <button class="tab-btn" onclick="showTab('vendors')">🤝 Vendors</button>
   <button class="tab-btn" onclick="showTab('review')" id="tab-review">🔴 Needs Review</button>
   <button class="tab-btn" onclick="showTab('optimize')">💰 Optimize</button>
+  <button class="tab-btn" onclick="showTab('propertycharts')">🏠 Property Charts</button>
   <button class="tab-btn" onclick="showTab('howto')">📋 How to Update</button>
 </div>
 
@@ -1039,6 +1040,82 @@ canvas{max-height:320px}
 </div>
 
 <!-- HOW TO UPDATE TAB -->
+
+<!-- ===== PROPERTY CHARTS TAB ===== -->
+<div id="tab-propertycharts" class="tab-content">
+  <h2 style="margin:0 0 18px;font-size:1.3rem;color:#1e293b;">🏠 Property Room Collections</h2>
+
+  <!-- Property Selector -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="propChartTabs">
+    <button onclick="selectPropChart('p3')" id="pct-p3" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#6366f1;color:#fff;">19817 N 5th Dr</button>
+    <button onclick="selectPropChart('p5')" id="pct-p5" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#e2e8f0;color:#475569;">14802 N 38th Dr</button>
+    <button onclick="selectPropChart('p6')" id="pct-p6" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#e2e8f0;color:#475569;">2302 E Janice Way</button>
+    <button onclick="selectPropChart('p7')" id="pct-p7" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#e2e8f0;color:#475569;">4029 W Grandview Rd</button>
+    <button onclick="selectPropChart('p8')" id="pct-p8" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#e2e8f0;color:#475569;">8229 S 25th St</button>
+    <button onclick="selectPropChart('p1')" id="pct-p1" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#e2e8f0;color:#475569;">Mesa (LTR)</button>
+    <button onclick="selectPropChart('p2')" id="pct-p2" style="padding:7px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;background:#e2e8f0;color:#475569;">13th Ave (LTR)</button>
+  </div>
+
+  <!-- Month Toggle -->
+  <div style="display:flex;gap:6px;margin-bottom:20px;align-items:center;">
+    <span style="font-size:0.8rem;color:#64748b;font-weight:600;margin-right:4px;">VIEW:</span>
+    <button onclick="selectPropMonth('2026-01')" id="pm-2026-01" style="padding:5px 14px;border-radius:16px;border:none;cursor:pointer;font-size:0.8rem;font-weight:600;background:#3b82f6;color:#fff;">Jan 2026</button>
+    <button onclick="selectPropMonth('2026-02')" id="pm-2026-02" style="padding:5px 14px;border-radius:16px;border:none;cursor:pointer;font-size:0.8rem;font-weight:600;background:#e2e8f0;color:#475569;">Feb 2026</button>
+    <button onclick="selectPropMonth('YTD')" id="pm-YTD" style="padding:5px 14px;border-radius:16px;border:none;cursor:pointer;font-size:0.8rem;font-weight:600;background:#e2e8f0;color:#475569;">YTD 2026</button>
+  </div>
+
+  <!-- Chart Area -->
+  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div id="propChartTitle" style="font-size:1rem;font-weight:700;color:#1e293b;"></div>
+      <div style="display:flex;gap:16px;font-size:0.75rem;">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#6366f1;border-radius:2px;margin-right:4px;"></span>Base Dues</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:2px;margin-right:4px;"></span>Late Fees</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:2px;margin-right:4px;"></span>Net to Host</span>
+      </div>
+    </div>
+    <canvas id="propRoomChart" height="280"></canvas>
+  </div>
+
+  <!-- Detail Table -->
+  <div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow-x:auto;">
+    <h3 style="margin:0 0 14px;font-size:0.95rem;color:#1e293b;">📋 Room Detail Breakdown</h3>
+    <table id="propRoomTable" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+      <thead>
+        <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+          <th style="padding:8px 10px;text-align:left;color:#475569;font-weight:700;">Room</th>
+          <th style="padding:8px 10px;text-align:left;color:#475569;font-weight:700;">Tenant</th>
+          <th style="padding:8px 10px;text-align:right;color:#475569;font-weight:700;">Base Dues</th>
+          <th style="padding:8px 10px;text-align:right;color:#ef4444;font-weight:700;">Late Fees</th>
+          <th style="padding:8px 10px;text-align:right;color:#6b7280;font-weight:700;">Platform Fees</th>
+          <th style="padding:8px 10px;text-align:right;color:#10b981;font-weight:700;">Net to Host</th>
+          <th style="padding:8px 10px;text-align:center;color:#475569;font-weight:700;">Source</th>
+          <th style="padding:8px 10px;text-align:center;color:#475569;font-weight:700;">Status</th>
+        </tr>
+      </thead>
+      <tbody id="propRoomTableBody"></tbody>
+      <tfoot id="propRoomTableFoot"></tfoot>
+    </table>
+  </div>
+
+  <!-- Late Fees Summary -->
+  <div id="lateFeesSummary" style="margin-top:16px;"></div>
+
+  <!-- Addenda -->
+  <div style="margin-top:14px;padding:12px 16px;background:#f0f9ff;border-left:3px solid #3b82f6;border-radius:6px;font-size:0.78rem;color:#475569;line-height:1.6;">
+    <strong>📌 Chart Notes:</strong>
+    <ul style="margin:6px 0 0;padding-left:18px;">
+      <li><strong>Base Dues</strong> = Regular monthly rent/membership dues collected per room</li>
+      <li><strong>Late Fees</strong> = Additional charges for late payment (stacked on top of dues bar in red)</li>
+      <li><strong>Net to Host</strong> = What actually hits your bank after PadSplit platform fees (service + booking + txn fees)</li>
+      <li><strong>Platform Fees</strong> = PadSplit booking fees (for new members) + service fee % + transaction fee % — not shown on bar but in table</li>
+      <li><strong>Direct/LTR rooms</strong> = Net equals gross (no platform fee deduction); Venmo/Zelle/Rent Perfect amounts as received</li>
+      <li><strong>⚠️ Feb 2026 data is partial</strong> — pulled through 2/24. Final numbers will be slightly higher once month closes.</li>
+    </ul>
+  </div>
+</div>
+
+
 <div id="tab-howto" class="tab-content">
   <h2 style="color:#c9a84c;margin-bottom:20px">📋 How to Update — Monthly Workflow</h2>
 
@@ -2015,6 +2092,197 @@ function initStackedExpenseChart() {
   var built = buildStackedDatasets('monthly');
   buildStackedLegend(built.datasets);
   stackedExpenseChartInstance = new Chart(ctx, { type:'bar', data:{ labels:built.labels, datasets:built.datasets }, options:stackChartOptions });
+}
+
+
+
+// ===== PROPERTY CHARTS TAB =====
+var propChartInstance = null;
+var currentPropId = 'p3';
+var currentPropMonth = '2026-01';
+var roomData = {"p3": {"2026-01": {"Rm 2": {"tenant": "Joshua Mcgeathy", "dues": 748.0, "late_fees": 100.0, "booking_fees": 0.0, "service_fees": 67.84, "txn_fees": 0.0, "host_earnings": 780.16, "gross": 848.0, "source": "PadSplit", "late_flag": true}, "Rm 6": {"tenant": "James Miller", "dues": 940.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 116.8284, "txn_fees": 0.92317, "host_earnings": 855.81842, "gross": 973.5699999999999, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Scott Alexander", "dues": 1045.0, "late_fees": 50.0, "booking_fees": 0.0, "service_fees": 131.4, "txn_fees": 30.1125, "host_earnings": 933.4875, "gross": 1095.0, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Benjamin Garcia", "dues": 816.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 65.28, "txn_fees": 0.0, "host_earnings": 750.72, "gross": 816.0, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Antonio Acosta", "dues": 876.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 105.12, "txn_fees": 24.09, "host_earnings": 746.79, "gross": 876.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Margaret Phillips", "dues": 860.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 103.2, "txn_fees": 23.65, "host_earnings": 733.15, "gross": 860.0, "source": "PadSplit", "late_flag": false}}, "2026-02": {"Rm 2": {"tenant": "Joshua Mcgeathy", "dues": 935.0, "late_fees": 100.0, "booking_fees": 0.0, "service_fees": 82.80000000000001, "txn_fees": 0.0, "host_earnings": 952.2, "gross": 1035.0, "source": "PadSplit", "late_flag": true}, "Rm 6": {"tenant": "James Miller", "dues": 939.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 112.68, "txn_fees": 0.0, "host_earnings": 826.3199999999999, "gross": 939.0, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Scott Alexander", "dues": 860.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 103.2, "txn_fees": 23.65, "host_earnings": 733.15, "gross": 860.0, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Antonio Acosta", "dues": 876.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 105.12, "txn_fees": 24.09, "host_earnings": 746.79, "gross": 876.0, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Benjamin Garcia", "dues": 816.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 65.28, "txn_fees": 0.0, "host_earnings": 750.72, "gross": 816.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Margaret Phillips", "dues": 860.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 103.2, "txn_fees": 23.65, "host_earnings": 733.15, "gross": 860.0, "source": "PadSplit", "late_flag": false}}, "YTD": {"Rm 2": {"tenant": "Joshua Mcgeathy", "dues": 1683.0, "late_fees": 200.0, "booking_fees": 0.0, "service_fees": 150.64, "txn_fees": 0.0, "host_earnings": 1732.36, "gross": 1883.0, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Benjamin Garcia", "dues": 1632.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 130.56, "txn_fees": 0.0, "host_earnings": 1501.44, "gross": 1632.0, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Scott Alexander", "dues": 1905.0, "late_fees": 50.0, "booking_fees": 0.0, "service_fees": 234.6, "txn_fees": 53.76, "host_earnings": 1666.64, "gross": 1955.0, "source": "PadSplit", "late_flag": true}, "Rm 1": {"tenant": "Margaret Phillips", "dues": 1720.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 206.4, "txn_fees": 47.3, "host_earnings": 1466.3, "gross": 1720.0, "source": "PadSplit", "late_flag": false}, "Rm 6": {"tenant": "James Miller", "dues": 1879.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 229.51, "txn_fees": 0.92, "host_earnings": 1682.14, "gross": 1912.57, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Antonio Acosta", "dues": 1752.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 210.24, "txn_fees": 48.18, "host_earnings": 1493.58, "gross": 1752.0, "source": "PadSplit", "late_flag": false}}}, "p6": {"2026-01": {"Rm 2": {"tenant": "John Lee", "dues": 1075.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 86.0, "txn_fees": 0.0, "host_earnings": 989.0, "gross": 1075.0, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Drake White", "dues": 860.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 68.8, "txn_fees": 0.0, "host_earnings": 791.2, "gross": 860.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Sergey Woudenberg", "dues": 856.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 68.48, "txn_fees": 0.0, "host_earnings": 787.52, "gross": 856.0, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Crandall Head", "dues": 388.14, "late_fees": 0, "booking_fees": 298.58, "service_fees": 22.4, "txn_fees": 0.0, "host_earnings": 202.6576, "gross": 518.86, "source": "PadSplit", "late_flag": false}, "Rm 8": {"tenant": "Terry Grice", "dues": 923.95, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 923.95, "gross": 923.95, "source": "Direct/Rent Perfect", "late_flag": false}, "Rm 6": {"tenant": "Michael Little", "dues": 980.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 980.0, "gross": 980.0, "source": "Direct/Rent Perfect", "late_flag": false}}, "2026-02": {"Rm 4": {"tenant": "Drake White", "dues": 860.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 68.8, "txn_fees": 0.0, "host_earnings": 791.2, "gross": 860.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Sergey Woudenberg", "dues": 856.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 68.48, "txn_fees": 0.0, "host_earnings": 787.52, "gross": 856.0, "source": "PadSplit", "late_flag": false}, "Rm 7": {"tenant": "Michael Witt", "dues": 0.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 31.04, "txn_fees": 0.0, "host_earnings": 0.0, "gross": 0.0, "source": "PadSplit", "late_flag": false}, "Rm 2": {"tenant": "John Lee", "dues": 645.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 51.599999999999994, "txn_fees": 0.0, "host_earnings": 593.4000000000001, "gross": 645.0, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Michelle Winquist", "dues": 201.42999999999998, "late_fees": 0, "booking_fees": 201.42999999999998, "service_fees": 5.52, "txn_fees": 0.0, "host_earnings": 63.48, "gross": 270.42999999999995, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Nathaniel Delmont", "dues": 0.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 37.4736, "txn_fees": 0.0, "host_earnings": 23.0, "gross": 25.000000000000007, "source": "PadSplit", "late_flag": false}, "Rm 6": {"tenant": "Michael Little", "dues": 980.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 980.0, "gross": 980.0, "source": "Direct/Rent Perfect", "late_flag": false}, "Rm 8": {"tenant": "Terry Grice", "dues": 963.95, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 963.95, "gross": 963.95, "source": "Direct/Rent Perfect", "late_flag": false}}, "YTD": {"Rm 2": {"tenant": "John Lee", "dues": 1720.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 137.6, "txn_fees": 0.0, "host_earnings": 1582.4, "gross": 1720.0, "source": "PadSplit", "late_flag": false}, "Rm 8": {"tenant": "Terry Grice", "dues": 1887.9, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 1887.9, "gross": 1887.9, "source": "Direct/Rent Perfect", "late_flag": false}, "Rm 7": {"tenant": "Michael Witt", "dues": 0.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 31.04, "txn_fees": 0.0, "host_earnings": 0.0, "gross": 0.0, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Michelle Winquist", "dues": 201.43, "late_fees": 0, "booking_fees": 201.43, "service_fees": 5.52, "txn_fees": 0.0, "host_earnings": 63.48, "gross": 270.43, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Drake White", "dues": 1720.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 137.6, "txn_fees": 0.0, "host_earnings": 1582.4, "gross": 1720.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Sergey Woudenberg", "dues": 1712.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 136.96, "txn_fees": 0.0, "host_earnings": 1575.04, "gross": 1712.0, "source": "PadSplit", "late_flag": false}, "Rm 6": {"tenant": "Michael Little", "dues": 1960.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 1960.0, "gross": 1960.0, "source": "Direct/Rent Perfect", "late_flag": false}, "Rm 3": {"tenant": "Crandall Head", "dues": 388.14, "late_fees": 0, "booking_fees": 298.58, "service_fees": 59.87, "txn_fees": 0.0, "host_earnings": 225.66, "gross": 543.86, "source": "PadSplit", "late_flag": false}}}, "p5": {"2026-01": {"Rm 2": {"tenant": "Anthony Shivers II", "dues": 995.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 79.6, "txn_fees": 0.0, "host_earnings": 915.4000000000001, "gross": 995.0, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Phillip South", "dues": 158.57, "late_fees": 0, "booking_fees": 0.0, "service_fees": 16.9144, "txn_fees": 0.0, "host_earnings": 145.8844, "gross": 158.57, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Dandrine Strachan", "dues": 860.0, "late_fees": 25.0, "booking_fees": 0.0, "service_fees": 70.8, "txn_fees": 0.0, "host_earnings": 814.2, "gross": 885.0, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Aiyh Abu Zour", "dues": 764.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 61.12, "txn_fees": 0.0, "host_earnings": 702.88, "gross": 764.0, "source": "PadSplit", "late_flag": false}, "Rm 7": {"tenant": "JaNiya Price", "dues": 1015.4799999999999, "late_fees": 125.0, "booking_fees": 0.0, "service_fees": 91.23840000000001, "txn_fees": 0.0, "host_earnings": 1049.2416, "gross": 1140.48, "source": "PadSplit", "late_flag": true}, "Rm 4": {"tenant": "Selyna", "dues": 1125.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 1125.0, "gross": 1125.0, "source": "Direct/Venmo", "late_flag": false}}, "2026-02": {"Rm 1": {"tenant": "Dandrine Strachan", "dues": 860.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 68.8, "txn_fees": 0.0, "host_earnings": 791.2, "gross": 860.0, "source": "PadSplit", "late_flag": false}, "Rm 7": {"tenant": "JaNiya Price", "dues": 704.52, "late_fees": 75.0, "booking_fees": 0.0, "service_fees": 62.3616, "txn_fees": 0.0, "host_earnings": 717.1584, "gross": 779.52, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Aiyh Abu Zour", "dues": 764.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 61.12, "txn_fees": 0.0, "host_earnings": 702.88, "gross": 764.0, "source": "PadSplit", "late_flag": false}, "Rm 2": {"tenant": "Anthony Shivers II", "dues": 597.0, "late_fees": 25.0, "booking_fees": 0.0, "service_fees": 49.760000000000005, "txn_fees": 0.0, "host_earnings": 572.24, "gross": 622.0, "source": "PadSplit", "late_flag": true}, "Rm 6": {"tenant": "Alissa Inabinet Cruz", "dues": 402.82, "late_fees": 25.0, "booking_fees": 0.0, "service_fees": 34.2256, "txn_fees": 0.0, "host_earnings": 393.5944, "gross": 427.82, "source": "PadSplit", "late_flag": true}, "Rm 3": {"tenant": "Neysha Alston", "dues": 184.0, "late_fees": 0, "booking_fees": 184.0, "service_fees": 0.0, "txn_fees": 0.0, "host_earnings": 0.0, "gross": 184.0, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Selyna", "dues": 925.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 925.0, "gross": 925.0, "source": "Direct/Venmo", "late_flag": false}}, "YTD": {"Rm 2": {"tenant": "Anthony Shivers II", "dues": 1592.0, "late_fees": 25.0, "booking_fees": 0.0, "service_fees": 129.36, "txn_fees": 0.0, "host_earnings": 1487.64, "gross": 1617.0, "source": "PadSplit", "late_flag": true}, "Rm 7": {"tenant": "JaNiya Price", "dues": 1720.0, "late_fees": 200.0, "booking_fees": 0.0, "service_fees": 153.6, "txn_fees": 0.0, "host_earnings": 1766.4, "gross": 1920.0, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Aiyh Abu Zour", "dues": 1528.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 122.24, "txn_fees": 0.0, "host_earnings": 1405.76, "gross": 1528.0, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Selyna", "dues": 2050.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 2050.0, "gross": 2050.0, "source": "Direct/Venmo", "late_flag": false}, "Rm 1": {"tenant": "Dandrine Strachan", "dues": 1720.0, "late_fees": 25.0, "booking_fees": 0.0, "service_fees": 139.6, "txn_fees": 0.0, "host_earnings": 1605.4, "gross": 1745.0, "source": "PadSplit", "late_flag": true}, "Rm 6": {"tenant": "Alissa Inabinet Cruz", "dues": 402.82, "late_fees": 25.0, "booking_fees": 0.0, "service_fees": 34.23, "txn_fees": 0.0, "host_earnings": 393.59, "gross": 427.82, "source": "PadSplit", "late_flag": true}, "Rm 3": {"tenant": "Phillip South", "dues": 342.57, "late_fees": 0, "booking_fees": 184.0, "service_fees": 16.91, "txn_fees": 0.0, "host_earnings": 145.88, "gross": 342.57, "source": "PadSplit", "late_flag": false}}}, "p8": {"2026-01": {"Rm 2": {"tenant": "Michael Smith", "dues": 844.0, "late_fees": 125.0, "booking_fees": 0.0, "service_fees": 77.52, "txn_fees": 0.0, "host_earnings": 891.48, "gross": 969.0, "source": "PadSplit", "late_flag": true}, "Rm 4": {"tenant": "Thorvald Cadman", "dues": 776.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 62.08, "txn_fees": 0.0, "host_earnings": 713.92, "gross": 776.0, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Aaron Owens", "dues": 988.0, "late_fees": 100.0, "booking_fees": 0.0, "service_fees": 87.03999999999999, "txn_fees": 0.0, "host_earnings": 1000.96, "gross": 1088.0, "source": "PadSplit", "late_flag": true}, "Rm 1": {"tenant": "Noah Yang", "dues": 820.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 65.6, "txn_fees": 0.0, "host_earnings": 754.4, "gross": 820.0, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Victor Sesmas", "dues": 890.0, "late_fees": 75.0, "booking_fees": 0.0, "service_fees": 77.19999999999999, "txn_fees": 0.0, "host_earnings": 887.8000000000001, "gross": 965.0, "source": "PadSplit", "late_flag": true}, "Rm 6": {"tenant": "Isaiah Reyes (via Lilliana)", "dues": 903.95, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 903.95, "gross": 903.95, "source": "Direct/Rent Perfect", "late_flag": false}}, "2026-02": {"Rm 3": {"tenant": "Victor Sesmas", "dues": 926.0, "late_fees": 50.0, "booking_fees": 0.0, "service_fees": 83.2688, "txn_fees": 0.0, "host_earnings": 957.5912000000001, "gross": 1040.8600000000001, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Aaron Owens", "dues": 561.0, "late_fees": 50.0, "booking_fees": 0.0, "service_fees": 48.879999999999995, "txn_fees": 0.0, "host_earnings": 562.12, "gross": 611.0, "source": "PadSplit", "late_flag": true}, "Rm 4": {"tenant": "Thorvald Cadman", "dues": 776.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 62.08, "txn_fees": 0.0, "host_earnings": 713.92, "gross": 776.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Noah Yang", "dues": 820.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 65.6, "txn_fees": 0.0, "host_earnings": 754.4000000000001, "gross": 820.0, "source": "PadSplit", "late_flag": false}, "Rm 2": {"tenant": "Michael Smith", "dues": 539.0, "late_fees": 50.0, "booking_fees": 0.0, "service_fees": 47.12, "txn_fees": 0.0, "host_earnings": 541.88, "gross": 589.0, "source": "PadSplit", "late_flag": true}, "Rm 6": {"tenant": "Isaiah Reyes (via Lilliana)", "dues": 903.95, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 903.95, "gross": 903.95, "source": "Direct/Rent Perfect", "late_flag": false}}, "YTD": {"Rm 2": {"tenant": "Michael Smith", "dues": 1383.0, "late_fees": 175.0, "booking_fees": 0.0, "service_fees": 124.64, "txn_fees": 0.0, "host_earnings": 1433.36, "gross": 1558.0, "source": "PadSplit", "late_flag": true}, "Rm 5": {"tenant": "Aaron Owens", "dues": 1549.0, "late_fees": 150.0, "booking_fees": 0.0, "service_fees": 135.92, "txn_fees": 0.0, "host_earnings": 1563.08, "gross": 1699.0, "source": "PadSplit", "late_flag": true}, "Rm 4": {"tenant": "Thorvald Cadman", "dues": 1552.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 124.16, "txn_fees": 0.0, "host_earnings": 1427.84, "gross": 1552.0, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Noah Yang", "dues": 1640.0, "late_fees": 0, "booking_fees": 0.0, "service_fees": 131.2, "txn_fees": 0.0, "host_earnings": 1508.8, "gross": 1640.0, "source": "PadSplit", "late_flag": false}, "Rm 6": {"tenant": "Isaiah Reyes (via Lilliana)", "dues": 1807.9, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 1807.9, "gross": 1807.9, "source": "Direct/Rent Perfect", "late_flag": false}, "Rm 3": {"tenant": "Victor Sesmas", "dues": 1816.0, "late_fees": 125.0, "booking_fees": 0.0, "service_fees": 160.47, "txn_fees": 0.0, "host_earnings": 1845.39, "gross": 2005.86, "source": "PadSplit", "late_flag": true}}}, "p7": {"2026-01": {"Rm 6": {"tenant": "Luke Card", "dues": 399.85, "late_fees": 0, "booking_fees": 282.86, "service_fees": 9.3592, "txn_fees": 0.0, "host_earnings": 107.63080000000001, "gross": 399.85, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Alissa Inabinet Cruz", "dues": 615.14, "late_fees": 0, "booking_fees": 334.29, "service_fees": 22.467999999999996, "txn_fees": 0.0, "host_earnings": 258.382, "gross": 615.14, "source": "PadSplit", "late_flag": false}, "Rm 7": {"tenant": "Kwuanshele McKinnies", "dues": 261.71, "late_fees": 0, "booking_fees": 261.71, "service_fees": 0.0, "txn_fees": 0.0, "host_earnings": 0.0, "gross": 261.71, "source": "PadSplit", "late_flag": false}, "Rm 2": {"tenant": "Jesse Mink", "dues": 186.58999999999997, "late_fees": 0, "booking_fees": 186.58999999999997, "service_fees": 0.0, "txn_fees": 0.0, "host_earnings": 0.0, "gross": 186.58999999999997, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Gary Connor", "dues": 100.0, "late_fees": 0, "booking_fees": 100.0, "service_fees": 0.0, "txn_fees": 0.0, "host_earnings": 0.0, "gross": 100.0, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Jerrod Jesse (Jarrett)", "dues": 1120.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 1120.0, "gross": 1120.0, "source": "Direct/Zelle", "late_flag": false}}, "2026-02": {"Rm 3": {"tenant": "Gary Connor", "dues": 757.5699999999999, "late_fees": 0, "booking_fees": 195.72, "service_fees": 44.94799999999999, "txn_fees": 0.0, "host_earnings": 516.902, "gross": 757.5699999999999, "source": "PadSplit", "late_flag": false}, "Rm 2": {"tenant": "Isaiah Johnson", "dues": 669.4200000000001, "late_fees": 0, "booking_fees": 333.14, "service_fees": 63.5864, "txn_fees": 0.0, "host_earnings": 393.7508, "gross": 761.13, "source": "PadSplit", "late_flag": false}, "Rm 4": {"tenant": "Hannah Langford", "dues": 354.28, "late_fees": 0, "booking_fees": 234.0, "service_fees": 31.0176, "txn_fees": 0.0, "host_earnings": 110.6576, "gross": 354.28, "source": "PadSplit", "late_flag": false}, "Rm 7": {"tenant": "Kwuanshele McKinnies", "dues": 916.0, "late_fees": 0, "booking_fees": 65.44, "service_fees": 68.04480000000001, "txn_fees": 0.0, "host_earnings": 782.5152, "gross": 916.0, "source": "PadSplit", "late_flag": false}, "Rm 6": {"tenant": "Luke Card", "dues": 788.15, "late_fees": 0, "booking_fees": 0.0, "service_fees": 63.05200000000001, "txn_fees": 0.0, "host_earnings": 725.098, "gross": 788.15, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Jerrod Jesse (Jarrett)", "dues": 1200.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 1200.0, "gross": 1200.0, "source": "Direct/Zelle", "late_flag": false}, "Rm 1": {"tenant": "Omar Hamad", "dues": 867.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 867.0, "gross": 867.0, "source": "Direct/Rent Perfect", "late_flag": false}}, "YTD": {"Rm 2": {"tenant": "Jesse Mink", "dues": 856.01, "late_fees": 0, "booking_fees": 519.73, "service_fees": 63.59, "txn_fees": 0.0, "host_earnings": 393.75, "gross": 947.72, "source": "PadSplit", "late_flag": false}, "Rm 7": {"tenant": "Kwuanshele McKinnies", "dues": 1177.71, "late_fees": 0, "booking_fees": 327.15, "service_fees": 68.04, "txn_fees": 0.0, "host_earnings": 782.52, "gross": 1177.71, "source": "PadSplit", "late_flag": false}, "Rm 5": {"tenant": "Jerrod Jesse (Jarrett)", "dues": 2320.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 2320.0, "gross": 2320.0, "source": "Direct/Zelle", "late_flag": false}, "Rm 4": {"tenant": "Alissa Inabinet Cruz", "dues": 969.42, "late_fees": 0, "booking_fees": 568.29, "service_fees": 53.49, "txn_fees": 0.0, "host_earnings": 369.04, "gross": 969.42, "source": "PadSplit", "late_flag": false}, "Rm 1": {"tenant": "Omar Hamad", "dues": 867.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 867.0, "gross": 867.0, "source": "Direct/Rent Perfect", "late_flag": false}, "Rm 6": {"tenant": "Luke Card", "dues": 1188.0, "late_fees": 0, "booking_fees": 282.86, "service_fees": 72.41, "txn_fees": 0.0, "host_earnings": 832.73, "gross": 1188.0, "source": "PadSplit", "late_flag": false}, "Rm 3": {"tenant": "Gary Connor", "dues": 857.57, "late_fees": 0, "booking_fees": 295.72, "service_fees": 44.95, "txn_fees": 0.0, "host_earnings": 516.9, "gross": 857.57, "source": "PadSplit", "late_flag": false}}}, "p1": {"2026-01": {"Full Unit": {"tenant": "Ricardo Vizcarra", "dues": 2113.95, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 2113.95, "gross": 2113.95, "source": "LTR/Rent Perfect", "late_flag": false}}, "2026-02": {"Full Unit": {"tenant": "Ricardo Vizcarra", "dues": 2113.95, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 2113.95, "gross": 2113.95, "source": "LTR/Zelle", "late_flag": false}}, "YTD": {"Full Unit": {"tenant": "Ricardo Vizcarra", "dues": 4227.9, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 4227.9, "gross": 4227.9, "source": "LTR/Rent Perfect", "late_flag": false}}}, "p2": {"2026-01": {"Full Unit": {"tenant": "Ian Decker", "dues": 2480.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 2480.0, "gross": 2480.0, "source": "LTR/Rent Perfect", "late_flag": false}}, "2026-02": {"Full Unit": {"tenant": "Ian Decker", "dues": 2480.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 2480.0, "gross": 2480.0, "source": "LTR/Rent Perfect", "late_flag": false}}, "YTD": {"Full Unit": {"tenant": "Ian Decker", "dues": 4960.0, "late_fees": 0, "booking_fees": 0, "service_fees": 0, "txn_fees": 0, "host_earnings": 4960.0, "gross": 4960.0, "source": "LTR/Rent Perfect", "late_flag": false}}}};
+var propLabels = {"p1": "Mesa (LTR)", "p2": "13th Ave (LTR)", "p3": "19817 N 5th Dr", "p5": "14802 N 38th Dr", "p6": "2302 E Janice Way", "p7": "4029 W Grandview Rd", "p8": "8229 S 25th St"};
+var propOrder = ["p3", "p5", "p6", "p7", "p8", "p1", "p2"];
+
+function selectPropChart(pid) {
+  currentPropId = pid;
+  propOrder.forEach(function(p) {
+    var btn = document.getElementById('pct-' + p);
+    if (btn) btn.style.cssText = btn.style.cssText.replace(/background:[^;]+/, 'background:#e2e8f0').replace(/color:[^;]+/, 'color:#475569');
+  });
+  var activeBtn = document.getElementById('pct-' + pid);
+  if (activeBtn) { activeBtn.style.background = '#6366f1'; activeBtn.style.color = '#fff'; }
+  renderPropChart();
+}
+
+function selectPropMonth(month) {
+  currentPropMonth = month;
+  ['2026-01','2026-02','YTD'].forEach(function(m) {
+    var btn = document.getElementById('pm-' + m);
+    if (btn) { btn.style.background = '#e2e8f0'; btn.style.color = '#475569'; }
+  });
+  var activeBtn = document.getElementById('pm-' + month);
+  if (activeBtn) { activeBtn.style.background = '#3b82f6'; activeBtn.style.color = '#fff'; }
+  renderPropChart();
+}
+
+function renderPropChart() {
+  var pid = currentPropId;
+  var month = currentPropMonth;
+  var propData = (roomData[pid] && roomData[pid][month]) ? roomData[pid][month] : {};
+  
+  // Sort rooms
+  var rooms = Object.keys(propData).sort(function(a,b) {
+    var na = parseInt(a.replace(/\D/g,'')) || 0;
+    var nb = parseInt(b.replace(/\D/g,'')) || 0;
+    return na - nb;
+  });
+
+  var labels = rooms;
+  var duesData = rooms.map(function(r) { return Math.round(propData[r].dues * 100)/100; });
+  var lateData = rooms.map(function(r) { return Math.round(propData[r].late_fees * 100)/100; });
+  var netData = rooms.map(function(r) { return Math.round(propData[r].host_earnings * 100)/100; });
+  var bgColors = rooms.map(function(r) { return propData[r].late_flag ? '#fef2f2' : '#f0f4ff'; });
+
+  // Title
+  var monthLabel = month === 'YTD' ? 'Year-to-Date 2026' : (month === '2026-01' ? 'January 2026' : 'February 2026 (partial)');
+  document.getElementById('propChartTitle').textContent = propLabels[pid] + ' — ' + monthLabel;
+
+  // Destroy old chart
+  if (propChartInstance) { propChartInstance.destroy(); propChartInstance = null; }
+
+  var ctx = document.getElementById('propRoomChart').getContext('2d');
+  propChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Base Dues',
+          data: duesData,
+          backgroundColor: 'rgba(99,102,241,0.75)',
+          borderRadius: 4,
+          stack: 'stack0'
+        },
+        {
+          label: 'Late Fees',
+          data: lateData,
+          backgroundColor: 'rgba(239,68,68,0.85)',
+          borderRadius: 4,
+          stack: 'stack0'
+        },
+        {
+          label: 'Net to Host',
+          data: netData,
+          backgroundColor: 'rgba(16,185,129,0.55)',
+          borderColor: 'rgba(16,185,129,0.9)',
+          borderWidth: 1.5,
+          borderRadius: 4,
+          borderDash: [],
+          type: 'bar',
+          stack: 'stack1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            title: function(items) {
+              var room = items[0].label;
+              var d = propData[room];
+              return room + (d ? ' — ' + d.tenant : '');
+            },
+            afterBody: function(items) {
+              var room = items[0].label;
+              var d = propData[room];
+              if (!d) return [];
+              var lines = [
+                'Gross Collected: $' + d.gross.toFixed(2),
+                'Platform Fees: $' + (d.booking_fees + d.service_fees + d.txn_fees).toFixed(2),
+                'Net to Host: $' + d.host_earnings.toFixed(2),
+                'Source: ' + d.source
+              ];
+              if (d.late_fees > 0) lines.push('⚠️ Late Fees: $' + d.late_fees.toFixed(2));
+              return lines;
+            }
+          }
+        },
+        datalabels: {
+          display: function(ctx) { return ctx.datasetIndex === 0 && ctx.dataset.data[ctx.dataIndex] > 0; },
+          formatter: function(v) { return '$' + v.toFixed(0); },
+          color: '#fff', font: { size: 10, weight: 'bold' },
+          anchor: 'center', align: 'center'
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { stacked: false, ticks: { callback: function(v) { return '$' + v.toLocaleString(); }, font: { size: 10 } }, grid: { color: '#f1f5f9' } }
+      }
+    }
+  });
+
+  // Build detail table
+  var tbody = document.getElementById('propRoomTableBody');
+  var tfoot = document.getElementById('propRoomTableFoot');
+  tbody.innerHTML = '';
+  var totDues=0, totLate=0, totPlatform=0, totNet=0, lateRooms=[];
+
+  rooms.forEach(function(room) {
+    var d = propData[room];
+    var platform = Math.round((d.booking_fees + d.service_fees + d.txn_fees)*100)/100;
+    totDues += d.dues; totLate += d.late_fees; totPlatform += platform; totNet += d.host_earnings;
+    if (d.late_flag) lateRooms.push(room + ' (' + d.tenant + ')');
+
+    var srcColor = '#6366f1';
+    if (d.source.includes('Venmo')) srcColor = '#f59e0b';
+    else if (d.source.includes('Zelle')) srcColor = '#3b82f6';
+    else if (d.source.includes('LTR')) srcColor = '#8b5cf6';
+    else if (d.source.includes('Direct')) srcColor = '#10b981';
+
+    var statusBadge = d.late_flag 
+      ? '<span style="background:#fef2f2;color:#ef4444;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:700;">⚠️ Late</span>'
+      : '<span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:600;">✓ On Time</span>';
+    if (d.host_earnings <= 0) statusBadge = '<span style="background:#fafafa;color:#94a3b8;padding:2px 8px;border-radius:10px;font-size:0.72rem;">No Payout</span>';
+
+    var rowBg = d.late_flag ? '#fffbfb' : '#fff';
+    tbody.innerHTML += '<tr style="border-bottom:1px solid #f1f5f9;background:' + rowBg + ';">' +
+      '<td style="padding:8px 10px;font-weight:700;color:#1e293b;">' + room + '</td>' +
+      '<td style="padding:8px 10px;color:#475569;">' + d.tenant + '</td>' +
+      '<td style="padding:8px 10px;text-align:right;color:#374151;">$' + d.dues.toFixed(2) + '</td>' +
+      '<td style="padding:8px 10px;text-align:right;color:' + (d.late_fees>0?'#ef4444':'#94a3b8') + ';font-weight:' + (d.late_fees>0?'700':'400') + ';">' + (d.late_fees>0?'$'+d.late_fees.toFixed(2):'-') + '</td>' +
+      '<td style="padding:8px 10px;text-align:right;color:#6b7280;">' + (platform>0?'$'+platform.toFixed(2):'-') + '</td>' +
+      '<td style="padding:8px 10px;text-align:right;font-weight:700;color:#10b981;">$' + d.host_earnings.toFixed(2) + '</td>' +
+      '<td style="padding:8px 10px;text-align:center;"><span style="background:' + srcColor + '20;color:' + srcColor + ';padding:2px 7px;border-radius:10px;font-size:0.72rem;font-weight:600;">' + d.source + '</span></td>' +
+      '<td style="padding:8px 10px;text-align:center;">' + statusBadge + '</td>' +
+      '</tr>';
+  });
+
+  tfoot.innerHTML = '<tr style="background:#f8fafc;border-top:2px solid #e2e8f0;font-weight:700;">' +
+    '<td style="padding:9px 10px;color:#1e293b;" colspan="2">TOTAL</td>' +
+    '<td style="padding:9px 10px;text-align:right;color:#374151;">$' + totDues.toFixed(2) + '</td>' +
+    '<td style="padding:9px 10px;text-align:right;color:#ef4444;">$' + totLate.toFixed(2) + '</td>' +
+    '<td style="padding:9px 10px;text-align:right;color:#6b7280;">$' + totPlatform.toFixed(2) + '</td>' +
+    '<td style="padding:9px 10px;text-align:right;color:#10b981;">$' + totNet.toFixed(2) + '</td>' +
+    '<td colspan="2"></td></tr>';
+
+  // Late fees summary
+  var lsEl = document.getElementById('lateFeesSummary');
+  if (lateRooms.length > 0) {
+    lsEl.innerHTML = '<div style="padding:12px 16px;background:#fef2f2;border-left:3px solid #ef4444;border-radius:6px;font-size:0.82rem;color:#7f1d1d;">' +
+      '<strong>⚠️ Late Payments (' + lateRooms.length + ' room' + (lateRooms.length>1?'s':'') + '):</strong> ' + lateRooms.join(', ') +
+      '<span style="margin-left:8px;color:#b91c1c;">Total late fees: $' + totLate.toFixed(2) + '</span></div>';
+  } else {
+    lsEl.innerHTML = '<div style="padding:10px 16px;background:#f0fdf4;border-left:3px solid #10b981;border-radius:6px;font-size:0.82rem;color:#14532d;">' +
+      '✓ No late fees for this property/period.</div>';
+  }
+}
+
+function initPropCharts() {
+  renderPropChart();
 }
 
 </script>
