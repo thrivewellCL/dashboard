@@ -161,22 +161,9 @@ canvas{max-height:320px}
 }
 
 
-#vendorPieChart {
-    width: 380px !important;
-    height: 380px !important;
-}
 
 
-    /* Bigger pie chart containers */
-    .pie-chart-wrapper { 
-      width: 520px !important; 
-      height: 520px !important; 
-      margin: 0 auto !important;
-    }
-    canvas#expensePieChart, canvas#revenuePieChart {
-      max-width: 460px !important;
-      max-height: 460px !important;
-    }
+    
 
   </style>
 
@@ -330,7 +317,7 @@ canvas{max-height:320px}
   <div class="chart-row" style="margin-bottom:20px">
     <div class="chart-card">
       <div class="chart-title">🥧 Revenue by Platform — YTD 2026</div>
-      <div style="display:flex;justify-content:center;align-items:center;"><canvas id="vendorPieChart" style="width:380px!important;height:380px!important;max-width:380px;max-height:380px"></canvas></div>
+      <div style="display:flex;justify-content:center;align-items:center;"><canvas id="vendorPieChart" style="min-height:280px;width:100%"></canvas></div>
     </div>
     <div class="chart-card">
       <div class="chart-title">📊 PadSplit Income — Jan vs Feb 2026</div>
@@ -1856,54 +1843,64 @@ function initDashboard() {
 
   // ─── 3. REVENUE BY PLATFORM (DOUGHNUT) ──────────────────────────────────
   (function(){
-    const platData   = [31963, 9500, 9188, 28589];
-    const platLabels = ['PadSplit','Airbnb','LTR (Mesa & 13th Ave)','Direct (Zelle / Venmo)'];
-    const platColors = ['#4CAF50','#FF5722','#9C27B0','#2196F3'];
+    const platData   = [31963, 28589, 9500, 9188];
+    const platLabels = ['PadSplit','Direct (Zelle / Venmo)','Airbnb','LTR (Mesa & 13th Ave)'];
+    const platColors = ['#4CAF50','#2196F3','#FF5722','#9C27B0'];
     const platTotal  = platData.reduce((a,b)=>a+b,0);
 
-    const centerPlugin2 = {
-      id:'centerText2',
-      afterDraw(chart){
-        if(chart.canvas.id !== 'vendorPieChart') return;
-        const {ctx, chartArea:{top,bottom,left,right}} = chart;
-        const cx=(left+right)/2, cy=(top+bottom)/2;
-        ctx.save();
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle='#c9a84c'; ctx.font='bold 18px Segoe UI';
-        ctx.fillText('$'+platTotal.toLocaleString(), cx, cy-10);
-        ctx.fillStyle='#1f2937'; ctx.font='12px Segoe UI';
-        ctx.fillText('Gross Revenue', cx, cy+12);
-        ctx.restore();
-      }
-    };
-
     new Chart(document.getElementById('vendorPieChart'), {
-      type: 'doughnut',
-      data:{
+      type: 'bar',
+      data: {
         labels: platLabels,
         datasets:[{
+          label: 'Revenue',
           data: platData,
           backgroundColor: platColors,
-          borderColor:'rgba(13,27,46,0.8)',
-          borderWidth:2,
-          hoverOffset:14,
-          hoverBorderColor:'#fff'
+          borderRadius: 6,
+          borderSkipped: false,
+          barThickness: 32
         }]
       },
-      plugins:[centerPlugin2, outerLabelsPlugin],
-      options:{
-        responsive:true, maintainAspectRatio:true, aspectRatio:1, cutout:'62%',
-        layout:{ padding:{ left:160, right:160, top:20, bottom:20 } },
-        plugins:{
-          datalabels:{ display:false },
-          legend:{ display:false },
-          tooltip:{ ...tooltipDefaults, callbacks:{
-            title: ctx => ctx[0].label,
-            label: ctx => {
-              const pct = ((ctx.parsed/platTotal)*100).toFixed(1);
-              return ` ${fmtDollar(ctx.parsed)}  ·  ${pct}% of revenue`;
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          outerLabels: false,
+          centerText: false,
+          centerText2: false,
+          legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            color: '#1f2937',
+            font: { size: 13, weight: 'bold' },
+            formatter: (v) => {
+              const pct = ((v/platTotal)*100).toFixed(1);
+              return '$'+v.toLocaleString()+' ('+pct+'%)';
             }
-          }}
+          },
+          tooltip: {
+            ...tooltipDefaults,
+            callbacks: {
+              label: ctx => {
+                const pct = ((ctx.parsed.x/platTotal)*100).toFixed(1);
+                return ' '+fmtDollar(ctx.parsed.x)+' — '+pct+'% of revenue';
+              }
+            }
+          }
+        },
+        layout: { padding: { right: 160 } },
+        scales: {
+          x: {
+            ticks: { color:'#1f2937', callback: v => '$'+v.toLocaleString() },
+            grid: { color:'rgba(0,0,0,0.06)' },
+            suggestedMax: 35000
+          },
+          y: {
+            ticks: { color:'#1f2937', font:{ size:13, weight:'600' } },
+            grid: { display: false }
+          }
         }
       }
     });
