@@ -388,24 +388,20 @@ canvas{max-height:320px}
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
       <div>
         <h3 style="color:#1e293b;margin:0 0 4px 0;font-size:17px;">📊 Expenses by Property &amp; Category</h3>
-        <div style="color:#64748b;font-size:12px;">Expenses by category — click a month or view YTD totals</div>
+        <div style="color:#64748b;font-size:12px;">Stacked view — each bar = one property, color = expense category</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="exp-filter-btn" data-month="2026-01"
-          onclick="initCatExpenseChart('2026-01'); document.querySelectorAll('.exp-filter-btn').forEach(function(b){b.style.background='#e2e8f0';b.style.color='#475569';}); this.style.background='#2563eb'; this.style.color='#fff';"
-          style="padding:7px 18px;border-radius:20px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#e2e8f0;color:#475569;">Jan 2026</button>
-        <button class="exp-filter-btn" data-month="2026-02"
-          onclick="initCatExpenseChart('2026-02'); document.querySelectorAll('.exp-filter-btn').forEach(function(b){b.style.background='#e2e8f0';b.style.color='#475569';}); this.style.background='#2563eb'; this.style.color='#fff';"
-          style="padding:7px 18px;border-radius:20px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#e2e8f0;color:#475569;">Feb 2026 ⚠️</button>
-        <button class="exp-filter-btn active" data-month="ytd"
-          onclick="initCatExpenseChart('ytd'); document.querySelectorAll('.exp-filter-btn').forEach(function(b){b.style.background='#e2e8f0';b.style.color='#475569';}); this.style.background='#2563eb'; this.style.color='#fff';"
-          style="padding:7px 18px;border-radius:20px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#2563eb;color:#fff;">YTD 2026</button>
+        <button onclick="setStackView('monthly')" id="btnStackMonthly"
+          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#3b82f6;color:#fff;">Monthly</button>
+        <button onclick="setStackView('annual')" id="btnStackAnnual"
+          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#2d3448;color:#94a3b8;">Annual</button>
       </div>
     </div>
-    <div style="position:relative;height:480px;">
-      <canvas id="catExpenseChart" style="width:100%;height:100%;"></canvas>
+    <div style="position:relative;height:360px;">
+      <canvas id="stackedExpenseChart" style="width:100%;height:100%;"></canvas>
     </div>
-    
+    <!-- Legend -->
+    <div id="stackedExpLegend" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;"></div>
     <!-- Addenda -->
     <div style="display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:10px;padding:10px 14px;background:#f1f5f9;border-radius:8px;border:1px solid #e2e8f0;">
       <div style="font-size:11px;color:#64748b;"><strong style="color:#94a3b8;">Each bar</strong> = one investment property (excludes primary residence &amp; inactive)</div>
@@ -1459,7 +1455,11 @@ function showTab(id) {
   if (id === 'propertycharts') { setTimeout(function(){ renderPropChart(); }, 50); }
   if (id === 'expenses') {
     setTimeout(function(){
-      initCatExpenseChart();
+      if (stackedExpenseChartInstance) {
+        stackedExpenseChartInstance.destroy();
+        stackedExpenseChartInstance = null;
+      }
+      initStackedExpenseChart();
     }, 150);
   }
 }
@@ -1616,7 +1616,6 @@ function initDashboard() {
   }
   
   console.log('expensesAutoLoaded loaded:', expensesAutoLoaded.length, 'transactions');
-  rebuildStackedDataFromExpenses();
   // Destroy any existing chart instances to prevent conflicts
   Chart.helpers && Object.values(Chart.instances || {}).forEach(c => c.destroy && c.destroy());
   updatePendingCount();
@@ -2316,115 +2315,142 @@ if (sessionStorage.getItem('twcl_auth')==='1') {
 // ========================================================
 // STACKED EXPENSE CHART BY PROPERTY & CATEGORY
 // ========================================================
-var catExpenseChartInstance = null;
+var stackedExpenseChartInstance = null;
 
-var CAT_COLORS = {
-  'Mortgage':   '#2563eb',
-  'Materials':  '#f59e0b',
-  'Utilities':  '#10b981',
-  'Management': '#8b5cf6',
-  'Insurance':  '#ef4444',
-  'Other':      '#64748b'
+var stackedData = {
+  properties: [],
+  propertyIds: [],
+  months: [],
+  byPropertyMonth: {
+    'p1': { 'Jan 2026': { 'Mortgage': 1066 }, 'Feb 2026': {} },
+    'p2': { 'Jan 2026': { 'Mortgage': 2418.35 }, 'Feb 2026': {} },
+    'p3': { 'Jan 2026': { 'Mortgage': 2419.48, 'Electric': 54.90, 'Internet': 200, 'Solar': 93 }, 'Feb 2026': { 'Internet': 200 } },
+    'p5': { 'Jan 2026': { 'Mortgage': 2594.95, 'Materials': 54.58, 'Repairs': 120, 'Electric': 76.82, 'Gas': 89.90, 'Internet': 32.08 }, 'Feb 2026': { 'Materials': 29.15, 'Internet': 16.04 } },
+    'p6': { 'Jan 2026': { 'Landscaping': 364.86, 'Repairs': 320.90, 'Electric': 214.16, 'Gas': 95.47, 'Internet': 215.42 }, 'Feb 2026': { 'Internet': 215.40 } },
+    'p7': { 'Jan 2026': { 'Mortgage': 3763, 'Furnishings': 50, 'Landscaping': 965, 'Marketing': 505, 'Materials': 1436.46, 'Repairs': 1860, 'Software': 126.36, 'Electric': 59.25, 'Internet': 156.37 }, 'Feb 2026': { 'Materials': 1010.42 } },
+    'p8': { 'Jan 2026': { 'Mortgage': 2420.24, 'Repairs': 120, 'Electric': 127.44, 'Gas': 63.65, 'Internet': 80 }, 'Feb 2026': { 'Materials': 29.15 } }
+  }
 };
 
-function buildCatData(monthFilter) {
-  var cats = {};
-  var now = new Date();
-  var curYear = now.getFullYear().toString();
 
-  (window.allExpenses || []).forEach(function(e) {
-    if (!e.prop) return;
-    var cat = e.category || 'Other';
-    var dt  = e.date || '';
-    var yr  = dt.slice(0,4);
-    var mo  = dt.slice(0,7); // YYYY-MM
-
-    if (monthFilter === 'ytd') {
-      if (yr !== curYear) return;
-    } else {
-      if (mo !== monthFilter) return;
-    }
-    cats[cat] = (cats[cat] || 0) + (parseFloat(e.amount) || 0);
+// Rebuild stackedData from actual expenses
+function rebuildStackedDataFromExpenses() {
+  if (typeof expensesAutoLoaded === 'undefined' || !expensesAutoLoaded.length) return;
+  
+  var props = new Set(), propMap = {}, months = new Set(), byPropMonth = {};
+  var propOrder = ['5th Dr', '38th Dr', 'Janice Way', 'Grandview', '25th St', 'Mesa', '13th Ave'];
+  
+  expensesAutoLoaded.forEach(e => {
+    if (!e.prop || e.income) return; // Skip unassigned and income
+    months.add(e.date.substring(0, 7)); // YYYY-MM
+    if (!propMap[e.prop]) propMap[e.prop] = e.prop;
+    props.add(e.prop);
+    
+    var key = e.date.substring(0, 7);
+    if (!byPropMonth[e.prop]) byPropMonth[e.prop] = {};
+    if (!byPropMonth[e.prop][key]) byPropMonth[e.prop][key] = {};
+    byPropMonth[e.prop][key][e.cat] = (byPropMonth[e.prop][key][e.cat] || 0) + e.amount;
   });
-
-  var entries = Object.keys(cats).map(function(k){ return {cat:k, amt:cats[k]}; });
-  entries.sort(function(a,b){ return b.amt - a.amt; });
-
-  return {
-    labels:   entries.map(function(e){ return e.cat; }),
-    amounts:  entries.map(function(e){ return Math.round(e.amt * 100) / 100; }),
-    colors:   entries.map(function(e){ return CAT_COLORS[e.cat] || '#64748b'; })
-  };
+  
+  var propArray = propOrder.filter(p => props.has(p));
+  var monthArray = Array.from(months).sort(); // Keep YYYY-MM for lookups
+  
+  stackedData.properties = propArray;
+  stackedData.propertyIds = propArray;
+  stackedData.months = monthArray; // YYYY-MM format e.g. "2026-02"
+  stackedData.byPropertyMonth = byPropMonth;
 }
 
-function initCatExpenseChart(monthFilter) {
-  // Determine active month filter
-  if (!monthFilter) {
-    var activeBtn = document.querySelector('.exp-filter-btn.active');
-    monthFilter = activeBtn ? activeBtn.dataset.month : 'ytd';
+var catColors = {
+  'Mortgage':'#ef4444','Electric':'#f97316','Gas':'#eab308','Internet':'#8b5cf6',
+  'Solar':'#22c55e','Water':'#06b6d4','Repairs':'#3b82f6','Materials':'#f59e0b',
+  'Landscaping':'#84cc16','Cleaning':'#ec4899','Furnishings':'#a78bfa',
+  'Marketing':'#fb7185','Software':'#94a3b8','Insurance':'#64748b',
+  'VA & Staff':'#c084fc','Legal':'#67e8f9','Travel':'#fde68a','Other':'#475569'
+};
+
+function buildStackedDatasets(view) {
+  var allCats = Object.keys(catColors);
+  var props = stackedData.properties;
+  var pIds = stackedData.propertyIds;
+  var months = stackedData.months;
+  var datasets = [];
+  if (view === 'monthly') {
+    var labels = [];
+    months.forEach(function(m){ 
+      var d = new Date(m + '-01');
+      var mLabel = d.toLocaleString('en-US', {month:'short', year:'numeric'}).split(' ')[0];
+      props.forEach(function(p){ labels.push(p + ' (' + mLabel + ')'); }); 
+    });
+    allCats.forEach(function(cat) {
+      var vals = [];
+      months.forEach(function(m){ pIds.forEach(function(pid){ var d=stackedData.byPropertyMonth[pid][m]||{}; vals.push(d[cat]||0); }); });
+      if (!vals.some(function(v){return v>0;})) return;
+      datasets.push({ label:cat, data:vals, backgroundColor:catColors[cat]||'#475569', borderColor:'rgba(0,0,0,0.15)', borderWidth:1, borderRadius:3 });
+    });
+    return { labels:labels, datasets:datasets };
+  } else {
+    var labels = props;
+    allCats.forEach(function(cat) {
+      var vals = pIds.map(function(pid){ return months.reduce(function(s,m){ var d=stackedData.byPropertyMonth[pid][m]||{}; return s+(d[cat]||0); },0); });
+      if (!vals.some(function(v){return v>0;})) return;
+      datasets.push({ label:cat, data:vals, backgroundColor:catColors[cat]||'#475569', borderColor:'rgba(0,0,0,0.15)', borderWidth:1, borderRadius:4 });
+    });
+    return { labels:labels, datasets:datasets };
   }
+}
 
-  var ctx = document.getElementById('catExpenseChart');
-  if (!ctx) return;
+function buildStackedLegend(datasets) {
+  var el = document.getElementById('stackedExpLegend');
+  if (!el) return;
+  el.innerHTML = datasets.map(function(ds){
+    return '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#444;">' +
+      '<div style="width:12px;height:12px;background:'+ds.backgroundColor+';border-radius:2px;flex-shrink:0;"></div>'+
+      '<span>'+ds.label+'</span></div>';
+  }).join('');
+}
 
-  if (catExpenseChartInstance) {
-    catExpenseChartInstance.destroy();
-    catExpenseChartInstance = null;
-  }
-
-  var built = buildCatData(monthFilter);
-  var total = built.amounts.reduce(function(s,v){ return s+v; }, 0);
-
-  catExpenseChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: built.labels,
-      datasets: [{
-        data:            built.amounts,
-        backgroundColor: built.colors,
-        borderRadius:    6,
-        borderSkipped:   false
-      }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              var pct = total > 0 ? (ctx.raw / total * 100).toFixed(1) : '0.0';
-              return '  $' + ctx.raw.toLocaleString('en-US', {minimumFractionDigits:2}) + '  (' + pct + '%)';
-            }
-          }
-        },
-        datalabels: {
-          anchor: 'end',
-          align:  'end',
-          color:  '#1e293b',
-          font:   { size: 13, weight: '600' },
-          formatter: function(value) {
-            return '$' + value.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
-          }
-        }
+var stackChartOptions = {
+  responsive:true, maintainAspectRatio:false,
+  plugins: {
+    legend:{display:true},
+    tooltip:{
+      callbacks:{
+        title:function(i){return i[0].label;},
+        label:function(i){ if(!i.raw||i.raw===0) return null; return ' '+i.dataset.label+': $'+i.raw.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); },
+        footer:function(i){ var t=i.reduce(function(s,x){return s+(x.raw||0);},0); return 'Total: $'+t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
       },
-      scales: {
-        x: {
-          grid:  { color: 'rgba(0,0,0,0.06)' },
-          ticks: {
-            color: '#64748b',
-            callback: function(v) { return '$' + v.toLocaleString(); }
-          }
-        },
-        y: {
-          grid:  { display: false },
-          ticks: { color: '#1e293b', font: { size: 14, weight: '600' } }
-        }
-      }
+      filter:function(i){return i.raw>0;},
+      backgroundColor:'rgba(15,20,33,0.95)',titleColor:'#f1f5f9',bodyColor:'#cbd5e1',
+      footerColor:'#3b82f6',borderColor:'#3b82f6',borderWidth:1,padding:12,cornerRadius:8
     }
-  });
+  },
+  scales:{
+    x:{stacked:true, ticks:{color:'#000',font:{size:10},maxRotation:30}, grid:{color:'rgba(0,0,0,0.1)'}},
+    y:{stacked:true, ticks:{color:'#000',font: { size: 12, color: '#1f2937'},callback:function(v){return '$'+(v/1000).toFixed(0)+'k';}}, grid:{color:'rgba(0,0,0,0.1)'}}
+  }
+};
+
+function setStackView(view) {
+  document.getElementById('btnStackMonthly').style.background = view==='monthly'?'#3b82f6':'#2d3448';
+  document.getElementById('btnStackMonthly').style.color = view==='monthly'?'#fff':'#94a3b8';
+  document.getElementById('btnStackAnnual').style.background = view==='annual'?'#3b82f6':'#2d3448';
+  document.getElementById('btnStackAnnual').style.color = view==='annual'?'#fff':'#94a3b8';
+  var built = buildStackedDatasets(view);
+  buildStackedLegend(built.datasets);
+  if (stackedExpenseChartInstance) {
+    stackedExpenseChartInstance.data.labels = built.labels;
+    stackedExpenseChartInstance.data.datasets = built.datasets;
+    stackedExpenseChartInstance.update('active');
+  }
+}
+
+function initStackedExpenseChart() {
+  var ctx = document.getElementById('stackedExpenseChart');
+  if (!ctx) return;
+  var built = buildStackedDatasets('monthly');
+  buildStackedLegend(built.datasets);
+  stackedExpenseChartInstance = new Chart(ctx, { type:'bar', data:{ labels:built.labels, datasets:built.datasets }, options:stackChartOptions });
 }
 
 
