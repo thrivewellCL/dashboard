@@ -399,7 +399,7 @@ canvas{max-height:320px}
           style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#3b82f6;color:#fff;">YTD 2026</button>
       </div>
     </div>
-    <div style="position:relative;height:560px;">
+    <div style="position:relative;height:480px;">
       <canvas id="catExpenseChart" style="width:100%;height:100%;"></canvas>
     </div>
   </div>
@@ -2437,24 +2437,24 @@ var catExpenseChartInstance = null;
 var currentCatExpPeriod = 'ytd';
 
 var CAT_COLORS = {
-  'Mortgage':   '#4f46e5',  // indigo
-  'Repairs':    '#ef4444',  // red
-  'Materials':  '#f97316',  // orange
-  'Landscaping':'#22c55e',  // green
-  'Utility':    '#06b6d4',  // cyan
-  'Utilities':  '#06b6d4',  // cyan (alias)
-  'Electric':   '#06b6d4',  // cyan
-  'Gas':        '#8b5cf6',  // purple
-  'Internet':   '#0ea5e9',  // sky blue
-  'Solar':      '#eab308',  // yellow
-  'Furnishings':'#ec4899',  // pink
-  'Marketing':  '#f43f5e',  // rose
-  'Software':   '#14b8a6',  // teal
-  'Supplies':   '#84cc16',  // lime
-  'Management': '#a855f7',  // violet
-  'Insurance':  '#f59e0b',  // amber
-  'Water':      '#38bdf8',  // light blue
-  'Other':      '#94a3b8'   // slate gray (distinct from cyan)
+  'Mortgage':    '#4f46e5',
+  'Repairs':     '#ef4444',
+  'Materials':   '#f97316',
+  'Landscaping': '#22c55e',
+  'Utility':     '#06b6d4',
+  'Utilities':   '#06b6d4',
+  'Electric':    '#06b6d4',
+  'Gas':         '#8b5cf6',
+  'Internet':    '#0ea5e9',
+  'Solar':       '#eab308',
+  'Furnishings': '#ec4899',
+  'Marketing':   '#f43f5e',
+  'Software':    '#14b8a6',
+  'Supplies':    '#84cc16',
+  'Management':  '#a855f7',
+  'Insurance':   '#f59e0b',
+  'Water':       '#38bdf8',
+  'Other':       '#e2e8f0'
 };
 
 function setCatExpPeriod(period) {
@@ -2485,6 +2485,8 @@ function initCatExpenseChart(period) {
   if (typeof expensesAutoLoaded !== 'undefined') {
     expensesAutoLoaded.forEach(function(e) {
       if (e.income) return; // skip income
+      // Skip credit card payment transfers (they double-count credit card expenses)
+      if (/payment to chase card/i.test(e.desc || '')) return;
       var d = e.date || '';
       var match = false;
       if (period === 'ytd') {
