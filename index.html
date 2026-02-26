@@ -383,32 +383,24 @@ canvas{max-height:320px}
 <!-- EXPENSES TAB -->
 <div id="tab-expenses" class="tab-content">
 
-  <!-- Stacked Expense Chart: By Property & Category -->
+  <!-- Category Expense Chart -->
   <div style="background:#ffffff;border-radius:14px;padding:22px 24px;margin-bottom:28px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
       <div>
-        <h3 style="color:#1e293b;margin:0 0 4px 0;font-size:17px;">📊 Expenses by Property &amp; Category</h3>
-        <div style="color:#64748b;font-size:12px;">Stacked view — each bar = one property, color = expense category</div>
+        <h3 style="color:#1e293b;margin:0 0 4px 0;font-size:17px;">📊 Expenses by Category</h3>
+        <div style="color:#64748b;font-size:12px;">Horizontal bars — sorted by amount, largest at top</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button onclick="setStackView('monthly')" id="btnStackMonthly"
-          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#3b82f6;color:#fff;">Monthly</button>
-        <button onclick="setStackView('annual')" id="btnStackAnnual"
-          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#2d3448;color:#94a3b8;">Annual</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="catExpBtns">
+        <button onclick="setCatExpPeriod('2026-01')" id="btnCatJan"
+          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#e2e8f0;color:#475569;">Jan 2026</button>
+        <button onclick="setCatExpPeriod('2026-02')" id="btnCatFeb"
+          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#e2e8f0;color:#475569;">Feb 2026</button>
+        <button onclick="setCatExpPeriod('ytd')" id="btnCatYtd"
+          style="padding:7px 16px;border-radius:20px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:#3b82f6;color:#fff;">YTD 2026</button>
       </div>
     </div>
-    <div style="position:relative;height:360px;">
-      <canvas id="stackedExpenseChart" style="width:100%;height:100%;"></canvas>
-    </div>
-    <!-- Legend -->
-    <div id="stackedExpLegend" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;"></div>
-    <!-- Addenda -->
-    <div style="display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:10px;padding:10px 14px;background:#f1f5f9;border-radius:8px;border:1px solid #e2e8f0;">
-      <div style="font-size:11px;color:#64748b;"><strong style="color:#94a3b8;">Each bar</strong> = one investment property (excludes primary residence &amp; inactive)</div>
-      <div style="font-size:11px;color:#64748b;"><strong style="color:#94a3b8;">Colors</strong> = expense category stacked within each property bar</div>
-      <div style="font-size:11px;color:#64748b;"><strong style="color:#94a3b8;">Monthly view</strong> = Jan &amp; Feb 2026 side-by-side per property</div>
-      <div style="font-size:11px;color:#64748b;"><strong style="color:#94a3b8;">Annual view</strong> = YTD totals per property (all months combined)</div>
-      <div style="font-size:11px;color:#64748b;"><strong style="color:#94a3b8;">Hover</strong> = see exact $ amount per category per property</div>
+    <div style="position:relative;height:480px;">
+      <canvas id="catExpenseChart" style="width:100%;height:100%;"></canvas>
     </div>
   </div>
 
@@ -1455,11 +1447,7 @@ function showTab(id) {
   if (id === 'propertycharts') { setTimeout(function(){ renderPropChart(); }, 50); }
   if (id === 'expenses') {
     setTimeout(function(){
-      if (stackedExpenseChartInstance) {
-        stackedExpenseChartInstance.destroy();
-        stackedExpenseChartInstance = null;
-      }
-      initStackedExpenseChart();
+      initCatExpenseChart(currentCatExpPeriod || 'ytd');
     }, 150);
   }
 }
@@ -2445,12 +2433,143 @@ function setStackView(view) {
   }
 }
 
-function initStackedExpenseChart() {
-  var ctx = document.getElementById('stackedExpenseChart');
+var catExpenseChartInstance = null;
+var currentCatExpPeriod = 'ytd';
+
+var CAT_COLORS = {
+  'Mortgage': '#4f46e5',
+  'Repairs': '#ef4444',
+  'Materials': '#f97316',
+  'Landscaping': '#22c55e',
+  'Utilities': '#06b6d4',
+  'Electric': '#06b6d4',
+  'Gas': '#8b5cf6',
+  'Internet': '#64748b',
+  'Solar': '#eab308',
+  'Furnishings': '#ec4899',
+  'Marketing': '#f43f5e',
+  'Software': '#0ea5e9',
+  'Supplies': '#84cc16',
+  'Other': '#94a3b8',
+  'Management': '#a855f7'
+};
+
+function setCatExpPeriod(period) {
+  currentCatExpPeriod = period;
+  ['2026-01','2026-02','ytd'].forEach(function(p) {
+    var id = p === '2026-01' ? 'btnCatJan' : p === '2026-02' ? 'btnCatFeb' : 'btnCatYtd';
+    var btn = document.getElementById(id);
+    if (btn) { btn.style.background = '#e2e8f0'; btn.style.color = '#475569'; }
+  });
+  var activeId = period === '2026-01' ? 'btnCatJan' : period === '2026-02' ? 'btnCatFeb' : 'btnCatYtd';
+  var activeBtn = document.getElementById(activeId);
+  if (activeBtn) { activeBtn.style.background = '#3b82f6'; activeBtn.style.color = '#fff'; }
+  initCatExpenseChart(period);
+}
+
+function initCatExpenseChart(period) {
+  var ctx = document.getElementById('catExpenseChart');
   if (!ctx) return;
-  var built = buildStackedDatasets('monthly');
-  buildStackedLegend(built.datasets);
-  stackedExpenseChartInstance = new Chart(ctx, { type:'bar', data:{ labels:built.labels, datasets:built.datasets }, options:stackChartOptions });
+
+  // Destroy old instance
+  if (catExpenseChartInstance) {
+    catExpenseChartInstance.destroy();
+    catExpenseChartInstance = null;
+  }
+
+  // Build category totals from expensesAutoLoaded
+  var catTotals = {};
+  if (typeof expensesAutoLoaded !== 'undefined') {
+    expensesAutoLoaded.forEach(function(e) {
+      if (e.income) return; // skip income
+      var d = e.date || '';
+      var match = false;
+      if (period === 'ytd') {
+        match = d.startsWith('2026-');
+      } else {
+        match = d.startsWith(period);
+      }
+      if (!match) return;
+      var cat = e.cat || 'Other';
+      catTotals[cat] = (catTotals[cat] || 0) + (e.amount || 0);
+    });
+  }
+
+  // Sort by amount descending
+  var cats = Object.keys(catTotals).sort(function(a, b) { return catTotals[b] - catTotals[a]; });
+  var amounts = cats.map(function(c) { return Math.round(catTotals[c] * 100) / 100; });
+  var total = amounts.reduce(function(s, v) { return s + v; }, 0);
+
+  if (cats.length === 0) {
+    // No data — show message
+    var c2d = ctx.getContext('2d');
+    c2d.clearRect(0, 0, ctx.width, ctx.height);
+    c2d.fillStyle = '#94a3b8';
+    c2d.font = '16px sans-serif';
+    c2d.textAlign = 'center';
+    c2d.fillText('No expense data for this period', ctx.width / 2, ctx.height / 2);
+    return;
+  }
+
+  var bgColors = cats.map(function(c) {
+    return CAT_COLORS[c] || '#94a3b8';
+  });
+
+  catExpenseChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [{
+        data: amounts,
+        backgroundColor: bgColors,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var val = ctx.raw;
+              var pct = total > 0 ? (val / total * 100).toFixed(1) : 0;
+              return ' $' + val.toLocaleString('en-US', {minimumFractionDigits:2}) + ' (' + pct + '%)';
+            }
+          }
+        },
+        datalabels: {
+          anchor: 'end',
+          align: 'end',
+          color: '#1e293b',
+          font: { size: 12, weight: '600' },
+          formatter: function(value, ctx) {
+            var pct = total > 0 ? (value / total * 100).toFixed(1) : 0;
+            return '$' + value.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}) + ' (' + pct + '%)';
+          },
+          clip: false
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,0.06)' },
+          ticks: {
+            color: '#475569',
+            callback: function(v) { return '$' + (v/1000).toFixed(0) + 'k'; }
+          }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#1e293b', font: { size: 13 } }
+        }
+      },
+      layout: { padding: { right: 140 } }
+    },
+    plugins: [ChartDataLabels]
+  });
 }
 
 
