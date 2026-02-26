@@ -1390,12 +1390,11 @@ function showTab(id) {
   if (id === 'expenses') {
     setTimeout(function(){
       if (stackedExpenseChartInstance) {
-        stackedExpenseChartInstance.resize();
-        stackedExpenseChartInstance.update();
-      } else {
-        initStackedExpenseChart();
+        stackedExpenseChartInstance.destroy();
+        stackedExpenseChartInstance = null;
       }
-    }, 100);
+      initStackedExpenseChart();
+    }, 150);
   }
 }
 
@@ -1557,8 +1556,6 @@ function initDashboard() {
   updatePendingCount();
   renderExpenses('','','','all');
   updateUnresolvedTotal();
-  initStackedExpenseChart();
-
   // Chart defaults
   // ─── GLOBAL CHART DEFAULTS ────────────────────────────────────────────────
   Chart.defaults.color = '#1f2937';
