@@ -1855,6 +1855,7 @@ function renderExpenses(search, cat, prop, month) {
 
 // ---- Charts ----
 function initDashboard() {
+  rebuildStackedDataFromExpenses();
   // Destroy any existing chart instances to prevent conflicts
   Chart.helpers && Object.values(Chart.instances || {}).forEach(c => c.destroy && c.destroy());
   updatePendingCount();
@@ -2559,9 +2560,9 @@ if (sessionStorage.getItem('twcl_auth')==='1') {
 var stackedExpenseChartInstance = null;
 
 var stackedData = {
-  properties: ['Mesa','13th Ave','5th Dr','38th Dr','Janice Way','Grandview','25th St'],
-  propertyIds: ['p1','p2','p3','p5','p6','p7','p8'],
-  months: ['Jan 2026','Feb 2026'],
+  properties: [],
+  propertyIds: [],
+  months: [],
   byPropertyMonth: {
     'p1': { 'Jan 2026': { 'Mortgage': 1066 }, 'Feb 2026': {} },
     'p2': { 'Jan 2026': { 'Mortgage': 2418.35 }, 'Feb 2026': {} },
@@ -2572,6 +2573,37 @@ var stackedData = {
     'p8': { 'Jan 2026': { 'Mortgage': 2420.24, 'Repairs': 120, 'Electric': 127.44, 'Gas': 63.65, 'Internet': 80 }, 'Feb 2026': { 'Materials': 29.15 } }
   }
 };
+
+
+// Rebuild stackedData from actual expenses
+function rebuildStackedDataFromExpenses() {
+  if (typeof expensesAutoLoaded === 'undefined' || !expensesAutoLoaded.length) return;
+  
+  var props = new Set(), propMap = {}, months = new Set(), byPropMonth = {};
+  var propOrder = ['5th Dr', '38th Dr', 'Janice Way', 'Grandview', '25th St', 'Mesa', '13th Ave'];
+  
+  expensesAutoLoaded.forEach(e => {
+    if (!e.prop || e.income) return; // Skip unassigned and income
+    months.add(e.date.substring(0, 7)); // YYYY-MM
+    if (!propMap[e.prop]) propMap[e.prop] = e.prop;
+    props.add(e.prop);
+    
+    var key = e.date.substring(0, 7);
+    if (!byPropMonth[e.prop]) byPropMonth[e.prop] = {};
+    if (!byPropMonth[e.prop][key]) byPropMonth[e.prop][key] = {};
+    byPropMonth[e.prop][key][e.cat] = (byPropMonth[e.prop][key][e.cat] || 0) + e.amount;
+  });
+  
+  var propArray = propOrder.filter(p => props.has(p));
+  var monthArray = Array.from(months).sort().map(m => {
+    var d = new Date(m + '-01'); return d.toLocaleString('en-US', {month:'short', year:'numeric'});
+  });
+  
+  stackedData.properties = propArray;
+  stackedData.propertyIds = propArray; // Use actual names, not IDs
+  stackedData.months = monthArray;
+  stackedData.byPropertyMonth = byPropMonth;
+}
 
 var catColors = {
   'Mortgage':'#ef4444','Electric':'#f97316','Gas':'#eab308','Internet':'#8b5cf6',
@@ -2634,8 +2666,8 @@ var stackChartOptions = {
     }
   },
   scales:{
-    x:{stacked:true, ticks:{color:'#94a3b8',font:{size:10},maxRotation:30}, grid:{color:'rgba(255,255,255,0.04)'}},
-    y:{stacked:true, ticks:{color:'#94a3b8',font: { size: 12, color: '#1f2937'},callback:function(v){return '$'+(v/1000).toFixed(0)+'k';}}, grid:{color:'rgba(255,255,255,0.07)'}}
+    x:{stacked:true, ticks:{color:'#000',font:{size:10},maxRotation:30}, grid:{color:'rgba(0,0,0,0.1)'}},
+    y:{stacked:true, ticks:{color:'#000',font: { size: 12, color: '#1f2937'},callback:function(v){return '$'+(v/1000).toFixed(0)+'k';}}, grid:{color:'rgba(0,0,0,0.1)'}}
   }
 };
 
