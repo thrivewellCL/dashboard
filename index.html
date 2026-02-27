@@ -318,22 +318,18 @@ canvas{max-height:320px}
     <div class="chart-card" style="margin-bottom:20px">
       <div class="chart-title">📈 Monthly P&L Summary — Income vs Expenses vs Profit</div>
       <canvas id="monthlyPLChart" style="min-height:320px;" style="min-height:500px;width:100%"></canvas>
-        <div style="display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:14px;padding:10px 14px;background:#f8f9fb;border-radius:8px;border:1px solid #1f2937;">
+        <div style="display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:14px;padding:10px 14px;background:#f8f9fb;border-radius:8px;border:1px solid #e5e7eb;">
           <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
-            <div style="width:16px;height:12px;background:#22c55e;border-radius:3px;flex-shrink:0;"></div>
-            <span><strong>Green Bars &#x2191;</strong> &mdash; Gross income collected that month</span>
+            <div style="width:16px;height:12px;background:#16a34a;border-radius:3px;flex-shrink:0;"></div>
+            <span><strong>Green</strong> &mdash; Gross income collected that month</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
             <div style="width:16px;height:12px;background:#dc2626;border-radius:3px;flex-shrink:0;"></div>
-            <span><strong>Red Bars &#x2193;</strong> &mdash; Total operating expenses (shown below zero axis)</span>
+            <span><strong>Red</strong> &mdash; Total operating expenses</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
-            <div style="width:20px;height:3px;background:#3b82f6;border-radius:2px;flex-shrink:0;margin:4px 0;"></div>
-            <span><strong>Blue Line</strong> &mdash; Cumulative YTD net cash flow (running total after mortgages)</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
-            <div style="width:16px;height:12px;background:#86efac;border-radius:3px;flex-shrink:0;opacity:0.6;"></div>
-            <span><strong>Ghost Bars</strong> &mdash; Visual depth overlay (same values, lighter shade for 3D effect)</span>
+            <div style="width:16px;height:12px;background:#2563eb;border-radius:3px;flex-shrink:0;"></div>
+            <span><strong>Blue</strong> &mdash; Net profit (Income minus Expenses)</span>
           </div>
         </div>
     </div>
@@ -2159,102 +2155,68 @@ function initDashboard() {
     });
   }
 
-  // ─── 7. MONTHLY P&L — COMBO (BARS + LINE) ────────────────────────────────
+  // ─── 7. MONTHLY P&L — CLEAN GROUPED BAR CHART ───────────────────────────
   new Chart(document.getElementById('monthlyPLChart'), {
     type:'bar',
     data:{
       labels:['January 2026','February 2026 (est.)'],
       datasets:[
-        // Ghost income bars (wider, lighter — depth effect)
         {
-          type:'bar', label:'_incomeGhost',
-          data:[36143,38200],
-          backgroundColor:'rgba(144,190,109,0.22)',
-          borderColor:'transparent', borderWidth:0,
-          barPercentage:0.82, categoryPercentage:0.72,
-          order:5, datalabels:{display:true}
-        },
-        // Ghost expense bars (wider, lighter, negative)
-        {
-          type:'bar', label:'_expenseGhost',
-          data:[-12275,-11800],
-          backgroundColor:'rgba(200,80,80,0.18)',
-          borderColor:'transparent', borderWidth:0,
-          barPercentage:0.82, categoryPercentage:0.72,
-          order:5, datalabels:{display:true}
-        },
-        // Income bars — green, going UP
-        {
-          type:'bar', label:'Gross Income',
+          label:'Gross Income',
           data:[36143,38200],
           backgroundColor:'#16a34a',
           borderColor:'#15803d',
-          borderWidth:1, borderRadius:2, borderSkipped:'bottom',
-          barPercentage:0.5, categoryPercentage:0.72,
-          order:2, datalabels:{display:true}
+          borderWidth:1, borderRadius:4,
+          barPercentage:0.65, categoryPercentage:0.8
         },
-        // Expense bars — dark red, going DOWN (negative values)
         {
-          type:'bar', label:'Total Expenses',
-          data:[-12275,-11800],
-          backgroundColor:'#b91c1c',
-          borderColor:'#991b1b',
-          borderWidth:1, borderRadius:2, borderSkipped:'top',
-          barPercentage:0.5, categoryPercentage:0.72,
-          order:2, datalabels:{display:true}
+          label:'Total Expenses',
+          data:[12275,11800],
+          backgroundColor:'#dc2626',
+          borderColor:'#b91c1c',
+          borderWidth:1, borderRadius:4,
+          barPercentage:0.65, categoryPercentage:0.8
         },
-        // Cumulative Net Income line — blue
         {
-          type:'line', label:'Cumulative Net Income',
-          data:[10396,20196],
-          borderColor:'#2563eb',
-          backgroundColor:'rgba(37,99,235,0.08)',
-          borderWidth:3,
-          pointBackgroundColor:'#2563eb',
-          pointBorderColor:'#fff',
-          pointBorderWidth:2,
-          pointRadius:7, pointHoverRadius:10,
-          tension:0.35, fill:false, order:1,
-          datalabels:{
-            display:true, align:'top', anchor:'end',
-            color:'#1d4ed8', font:{size:12,weight:'bold'},
-            formatter: v => '$'+v.toLocaleString()
-          }
+          label:'Net Profit',
+          data:[10396,9800],
+          backgroundColor:'#2563eb',
+          borderColor:'#1d4ed8',
+          borderWidth:1, borderRadius:4,
+          barPercentage:0.65, categoryPercentage:0.8
         }
       ]
     },
     options:{
       responsive:true,
       plugins:{
-        datalabels:{ display:true },
+        datalabels:{
+          display:true,
+          anchor:'end', align:'top',
+          color:'#1f2937',
+          font:{size:11, weight:'bold'},
+          formatter: v => '$'+v.toLocaleString()
+        },
         legend:{
-          labels:{
-            color:'#374151', padding:20, font:{size:12},
-            filter: item => !item.text.startsWith('_')
-          }
+          labels:{ color:'#374151', padding:20, font:{size:12} }
         },
         tooltip:{
           ...tooltipDefaults, mode:'index', intersect:false,
           callbacks:{
-            label: ctx => {
-              if(ctx.dataset.label.startsWith('_')) return null;
-              const v = Math.abs(ctx.parsed.y);
-              return ` ${ctx.dataset.label}: $${v.toLocaleString()}`;
-            }
+            label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`
           }
         }
       },
       scales:{
         x:{
-          ticks:{color:'#1f2937'},
-          grid:{color:'rgba(0,0,0,0.08)'},
-          grouped: false
+          ticks:{color:'#1f2937', font:{size:12}},
+          grid:{display:false}
         },
         y:{
-          ticks:{color:'#1f2937', callback: v => '$'+Math.abs(v).toLocaleString()},
-          grid:{color:'rgba(0,0,0,0.08)'},
+          ticks:{color:'#1f2937', callback: v => '$'+v.toLocaleString()},
+          grid:{color:'rgba(0,0,0,0.07)'},
           suggestedMax:45000,
-          suggestedMin:-18000
+          beginAtZero:true
         }
       }
     }
