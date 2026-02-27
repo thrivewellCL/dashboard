@@ -1899,7 +1899,7 @@ function initDashboard() {
 
   // ─── Property Income vs Expenses — dynamic by month/YTD ─────────────────
   var _propIncChartInst = null;
-  function renderPropIncomeChart(period) {
+  window.renderPropIncomeChart = function renderPropIncomeChart(period) {
     var PROP_ORDER = ['5th Dr','38th Dr','Janice Way','25th St','Grandview','Mesa','13th Ave'];
 
     // Build incMap / expMap for the selected period
