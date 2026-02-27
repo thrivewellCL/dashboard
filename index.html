@@ -342,14 +342,13 @@ canvas{max-height:320px}
     <div class="chart-card">
       <div class="chart-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <span>📊 Expense Breakdown by Category</span>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <button onclick="setExpView('jan')" id="expBtn_jan" style="padding:5px 12px;border-radius:20px;border:2px solid #c9a84c;background:#c9a84c;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Jan 2026</button>
-          <button onclick="setExpView('feb')" id="expBtn_feb" style="padding:5px 12px;border-radius:20px;border:2px solid #94a3b8;background:transparent;color:#475569;font-size:12px;font-weight:600;cursor:pointer;">Feb 2026 ⚠️</button>
-          <button onclick="setExpView('ytd')" id="expBtn_ytd" style="padding:5px 12px;border-radius:20px;border:2px solid #94a3b8;background:transparent;color:#475569;font-size:12px;font-weight:600;cursor:pointer;">YTD 2026</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <select id="expYearSelect" onchange="expYearChanged()" style="padding:4px 10px;border-radius:8px;border:1px solid #cbd5e1;font-size:12px;font-weight:600;background:#fff;display:none;"></select>
+          <div id="expMonthBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
         </div>
       </div>
       <div id="expPartialNote" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:6px 12px;font-size:12px;color:#92400e;margin:6px 0;">⚠️ Feb 2026 is <strong>partial</strong> — Chase Business Checking statement not yet uploaded. Credit card expenses only.</div>
-      <canvas id="expenseDonut" style="width:100%;height:400px;min-height:400px"></canvas>
+      <div style="position:relative;height:420px;"><canvas id="expenseDonut" style="width:100%;height:100%;"></canvas></div>
     </div>
   </div>
   <!-- Revenue by Platform Pie Chart -->
@@ -1870,116 +1869,232 @@ function initDashboard() {
     }
   });
 
-  // ─── 2. EXPENSE BREAKDOWN ─ Horizontal Bar ─────────────────────────────
+  // ─── 2. EXPENSE BREAKDOWN ─ Stacked Bar by Month (dynamic) ─────────────
   (function(){
-    // ── Expense Breakdown – multi-period data ──────────────────────────────────
-    const expDataSets = {
-      jan: {
-        labels: ['Mortgage','Materials & Supplies','Repairs & Labor','Marketing','Landscaping','Legal & Prof.','Cleaning','Internet','Electric','Water','Insurance','VA & Staff','Gas','Software & Tech','Solar','Phone','Business General','Furnishings'],
-        data:   [14682, 2825, 2537, 1720, 1552, 1078, 937, 700, 533, 419, 336, 260, 249, 187, 93, 61, 100, 61]
-      },
-      feb: {
-        labels: ['Materials & Supplies','Internet','Bank Fees','Furnishings','Cleaning','Phone'],
-        data:   [2766, 447, 149, 148, 110, 61]
-      },
-      ytd: {
-        labels: ['Mortgage','Repairs & Labor','Landscaping','Electric','Cleaning','Other','Internet','Gas','Water','Solar'],
-        data:   [17849, 1540, 1330, 1005, 850, 600, 559, 503, 503, 93]
-      }
-    };
-    const expColorPalette = ['#c9a84c','#60a5fa','#4ade80','#fbbf24','#f472b6','#94a3b8','#a855f7','#f97316','#38bdf8','#22c55e','#e11d48','#0ea5e9','#84cc16','#d946ef','#fb923c','#06b6d4','#6366f1','#10b981'];
+    var expBrkInst = null;
+    var expCurrentYear = null;
+    var expCurrentView = 'monthly'; // 'monthly' | 'ytd' | 'YYYY-MM' (single month)
 
-    function buildExpChart(view) {
-      const ds = expDataSets[view];
-      // sort descending
-      const combined = ds.labels.map((l,i)=>({l,v:ds.data[i]})).sort((a,b)=>b.v-a.v);
-      const labels = combined.map(x=>x.l);
-      const data   = combined.map(x=>x.v);
-      const colors = data.map((_,i)=>expColorPalette[i % expColorPalette.length]);
-      const total  = data.reduce((a,b)=>a+b,0);
-      const maxVal = Math.max(...data);
-      return {labels, data, colors, total, maxVal};
+    var EXP_CAT_COLORS = {
+      'Mortgage':'#ef4444','Repairs & Labor':'#3b82f6','Repairs':'#3b82f6',
+      'Materials & Supplies':'#f59e0b','Materials':'#f59e0b',
+      'Landscaping':'#84cc16','Marketing':'#fb7185','Cleaning':'#ec4899',
+      'Internet':'#8b5cf6','Electric':'#f97316','Gas':'#eab308',
+      'Water':'#06b6d4','Solar':'#22c55e','Insurance':'#64748b',
+      'VA & Staff':'#c084fc','VA':'#c084fc','Legal & Prof.':'#67e8f9','Legal':'#67e8f9',
+      'Furnishings':'#a78bfa','Software & Tech':'#94a3b8','Software':'#94a3b8',
+      'Phone':'#22d3ee','Utility':'#0891b2','Utilities':'#0891b2',
+      'Bank Fees':'#fbbf24','Business General':'#d97706',
+      'Other':'#475569','Travel':'#fde68a'
+    };
+    var EXP_FALLBACK = ['#c9a84c','#60a5fa','#4ade80','#fbbf24','#f472b6',
+      '#a855f7','#38bdf8','#fb923c','#e11d48','#0ea5e9','#d946ef','#10b981'];
+    function expCatColor(cat, idx) {
+      return EXP_CAT_COLORS[cat] || EXP_FALLBACK[idx % EXP_FALLBACK.length];
     }
 
-    let expChartInst = null;
-    function renderExpChart(view) {
-      const {labels, data, colors, total, maxVal} = buildExpChart(view);
-      const height = Math.max(380, labels.length * 42);
-      document.getElementById('expenseDonut').parentElement.style.height = height + 'px';
+    var SKIP_CATS = ['Credit Card Payment','Transfer','Zelle Transfer'];
 
-      // toggle button styles
-      ['jan','feb','ytd'].forEach(v => {
-        const btn = document.getElementById('expBtn_'+v);
-        if (v === view) {
-          btn.style.background = '#c9a84c'; btn.style.borderColor = '#c9a84c'; btn.style.color = '#fff';
-        } else {
-          btn.style.background = 'transparent'; btn.style.borderColor = '#94a3b8'; btn.style.color = '#475569';
-        }
+    function getExpTxns() {
+      var all = (typeof expensesAutoLoaded !== 'undefined') ? expensesAutoLoaded : [];
+      return all.filter(function(e) {
+        return !e.income && !SKIP_CATS.includes(e.cat) && e.date && e.date.length >= 7;
+      });
+    }
+
+    function getYears(txns) {
+      var s = new Set();
+      txns.forEach(function(e){ s.add(e.date.substring(0,4)); });
+      return Array.from(s).sort().reverse();
+    }
+
+    function getMonthsForYear(txns, year) {
+      var s = new Set();
+      txns.forEach(function(e){ if(e.date.startsWith(year)) s.add(e.date.substring(0,7)); });
+      return Array.from(s).sort();
+    }
+
+    function buildStackedData(txns, year, view) {
+      // filter to year (or single month)
+      var filtered = txns.filter(function(e){ return e.date.startsWith(year); });
+      if (view !== 'monthly' && view !== 'ytd') {
+        filtered = txns.filter(function(e){ return e.date.startsWith(view); });
+      }
+
+      // Aggregate by month → category
+      var byMC = {};
+      filtered.forEach(function(e) {
+        var ym = (view !== 'monthly' && view !== 'ytd') ? view : e.date.substring(0,7);
+        if (!byMC[ym]) byMC[ym] = {};
+        byMC[ym][e.cat] = (byMC[ym][e.cat] || 0) + Math.abs(e.amount);
       });
 
-      // partial note
-      document.getElementById('expPartialNote').style.display = (view === 'feb') ? 'block' : 'none';
+      var months = (view === 'ytd')
+        ? ['ytd']
+        : (view !== 'monthly' ? [view] : Object.keys(byMC).sort());
 
-      if (expChartInst) expChartInst.destroy();
-      expChartInst = new Chart(document.getElementById('expenseDonut'), {
+      if (view === 'ytd') {
+        // collapse all months into one YTD total
+        var ytdTotals = {};
+        Object.keys(byMC).forEach(function(m) {
+          Object.keys(byMC[m]).forEach(function(c) {
+            ytdTotals[c] = (ytdTotals[c] || 0) + byMC[m][c];
+          });
+        });
+        byMC = { ytd: ytdTotals };
+      }
+
+      // All categories sorted by total desc
+      var catTotals = {};
+      months.forEach(function(m) {
+        if (!byMC[m]) return;
+        Object.keys(byMC[m]).forEach(function(c) {
+          catTotals[c] = (catTotals[c] || 0) + byMC[m][c];
+        });
+      });
+      var cats = Object.keys(catTotals).sort(function(a,b){ return catTotals[b]-catTotals[a]; });
+
+      var labels = months.map(function(ym) {
+        if (ym === 'ytd') return 'YTD ' + year;
+        var d = new Date(ym + '-15');
+        return d.toLocaleString('en-US', {month:'short', year:'numeric'});
+      });
+
+      var datasets = cats.map(function(cat, i) {
+        return {
+          label: cat,
+          data: months.map(function(m){ return (byMC[m] && byMC[m][cat]) ? byMC[m][cat] : 0; }),
+          backgroundColor: expCatColor(cat, i),
+          borderColor: 'rgba(255,255,255,0.3)',
+          borderWidth: 1,
+          borderRadius: 3
+        };
+      });
+
+      return { labels: labels, datasets: datasets };
+    }
+
+    function styleBtn(btn, active) {
+      btn.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;' +
+        (active ? 'background:#c9a84c;border:2px solid #c9a84c;color:#fff;'
+                : 'background:transparent;border:2px solid #94a3b8;color:#475569;');
+    }
+
+    function renderControls(txns, year, months) {
+      // Year dropdown
+      var sel = document.getElementById('expYearSelect');
+      var years = getYears(txns);
+      sel.innerHTML = '';
+      years.forEach(function(y) {
+        var o = document.createElement('option');
+        o.value = y; o.textContent = y;
+        if (y === year) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.style.display = years.length > 1 ? '' : 'none';
+
+      // Month buttons
+      var container = document.getElementById('expMonthBtns');
+      container.innerHTML = '';
+
+      var allBtn = document.createElement('button');
+      allBtn.textContent = 'All Months';
+      allBtn.onclick = function(){ expCurrentView = 'monthly'; renderExpBreakdown(); };
+      styleBtn(allBtn, expCurrentView === 'monthly');
+      container.appendChild(allBtn);
+
+      months.forEach(function(ym) {
+        var d = new Date(ym + '-15');
+        var lbl = d.toLocaleString('en-US', {month:'short', year:'2-digit'});
+        var btn = document.createElement('button');
+        btn.textContent = lbl;
+        btn.onclick = (function(m){ return function(){ expCurrentView = m; renderExpBreakdown(); }; })(ym);
+        styleBtn(btn, expCurrentView === ym);
+        container.appendChild(btn);
+      });
+
+      var ytdBtn = document.createElement('button');
+      ytdBtn.textContent = 'YTD';
+      ytdBtn.onclick = function(){ expCurrentView = 'ytd'; renderExpBreakdown(); };
+      styleBtn(ytdBtn, expCurrentView === 'ytd');
+      container.appendChild(ytdBtn);
+    }
+
+    function renderExpBreakdown() {
+      var txns = getExpTxns();
+      var years = getYears(txns);
+      if (!years.length) return;
+      if (!expCurrentYear || !years.includes(expCurrentYear)) expCurrentYear = years[0];
+
+      var months = getMonthsForYear(txns, expCurrentYear);
+      renderControls(txns, expCurrentYear, months);
+
+      // Partial note
+      var note = document.getElementById('expPartialNote');
+      if (note) note.style.display = (expCurrentView === '2026-02') ? 'block' : 'none';
+
+      var chartData = buildStackedData(txns, expCurrentYear, expCurrentView);
+
+      var canvas = document.getElementById('expenseDonut');
+      if (expBrkInst) { expBrkInst.destroy(); expBrkInst = null; }
+
+      expBrkInst = new Chart(canvas, {
         type: 'bar',
-        data: {
-          labels,
-          datasets:[{
-            label: 'Amount',
-            data,
-            backgroundColor: colors,
-            borderRadius: 6,
-            borderSkipped: false,
-            barThickness: 28
-          }]
-        },
+        data: chartData,
         options: {
-          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            outerLabels: false,
-            centerText: false,
-            legend: { display: false },
-            datalabels: {
-              anchor: 'end',
-              align: 'end',
-              color: '#1f2937',
-              font: { size: 12, weight: 'bold' },
-              formatter: (v) => {
-                const pct = ((v/total)*100).toFixed(1);
-                return '$'+v.toLocaleString()+' ('+pct+'%)';
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                color: '#1f2937', font: { size: 11 },
+                padding: 10, usePointStyle: true, pointStyleWidth: 10,
+                boxWidth: 12
               }
             },
+            datalabels: { display: false },
             tooltip: {
-              ...tooltipDefaults,
+              backgroundColor: 'rgba(10,25,47,0.96)',
+              borderColor: '#c9a84c', borderWidth: 1,
+              titleColor: '#c9a84c', bodyColor: '#e2e8f0',
               callbacks: {
-                label: ctx => {
-                  const pct = ((ctx.parsed.x/total)*100).toFixed(1);
-                  return ' '+fmtDollar(ctx.parsed.x)+' — '+pct+'% of total';
+                label: function(ctx) {
+                  if (!ctx.parsed.y) return null;
+                  return '  ' + ctx.dataset.label + ': $' + ctx.parsed.y.toLocaleString();
+                },
+                footer: function(items) {
+                  var total = items.reduce(function(s,i){ return s + (i.parsed.y||0); }, 0);
+                  return 'Total: $' + total.toLocaleString();
                 }
               }
             }
           },
-          layout: { padding: { right: 160 } },
           scales: {
             x: {
-              ticks: { color:'#1f2937', callback: v => '$'+v.toLocaleString() },
-              grid: { color:'rgba(0,0,0,0.06)' },
-              suggestedMax: maxVal * 1.25
+              stacked: true,
+              ticks: { color: '#1f2937', font: { size: 12, weight: '600' } },
+              grid: { display: false }
             },
             y: {
-              ticks: { color:'#1f2937', font:{ size:13, weight:'600' } },
-              grid: { display: false }
+              stacked: true,
+              ticks: { color: '#1f2937', callback: function(v){ return '$' + v.toLocaleString(); } },
+              grid: { color: 'rgba(0,0,0,0.06)' }
             }
           }
         }
       });
     }
 
-    window.setExpView = function(view) { renderExpChart(view); };
-    renderExpChart('jan');
+    window.setExpView = function(v) { expCurrentView = v; renderExpBreakdown(); };
+    window.expYearChanged = function() {
+      expCurrentYear = document.getElementById('expYearSelect').value;
+      expCurrentView = 'monthly';
+      renderExpBreakdown();
+    };
+    window.initExpBreakdownChart = renderExpBreakdown;
+    renderExpBreakdown();
   })();
 
   // ─── 3. REVENUE BY PLATFORM (DOUGHNUT) ──────────────────────────────────
