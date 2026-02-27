@@ -317,6 +317,10 @@ canvas{max-height:320px}
     <!-- Monthly Income / Expenses / Profit -->
     <div class="chart-card" style="margin-bottom:20px">
       <div class="chart-title">📈 Monthly P&L Summary — Income vs Expenses vs Profit</div>
+      <div style="margin-bottom:8px;text-align:right;">
+        <select id="plYearSelect" onchange="plYearChanged()" style="display:none;padding:4px 8px;border-radius:6px;border:1px solid #d1d5db;font-size:13px;color:#374151;background:#fff;">
+        </select>
+      </div>
       <canvas id="monthlyPLChart" style="min-height:320px;" style="min-height:500px;width:100%"></canvas>
         <div style="display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:14px;padding:10px 14px;background:#f8f9fb;border-radius:8px;border:1px solid #e5e7eb;">
           <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#444;">
@@ -1791,6 +1795,43 @@ function initDashboard() {
 
   function fmtDollar(v) { return '$' + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits:0}); }
 
+  // ─── AGGREGATE DATA FROM FILE ────────────────────────────────────────────
+  (function(){
+    var CC_PAY = ['Payment to Chase card ending in 8986','Payment to Chase card ending in 7623'];
+    function _isCC(d){ return CC_PAY.some(function(x){ return d.indexOf(x) >= 0; }); }
+
+    window._dashInc  = {};   // { 'YYYY-MM': total }
+    window._dashExp  = {};   // { 'YYYY-MM': total }
+    window._dashPropInc = {}; // { propName: total }
+    window._dashPropExp = {}; // { propName: total }
+    window._dashPlat = {};   // { platform: total }
+
+    (window.expensesAutoLoaded || []).forEach(function(t) {
+      if (!t.date) return;
+      var ym = t.date.substring(0, 7);
+      if (t.income) {
+        if (t.acct === 'RentPerfect') return; // avoid double-count with VCI Clearing in Checking
+        window._dashInc[ym]  = (window._dashInc[ym]  || 0) + t.amount;
+        if (t.prop) window._dashPropInc[t.prop] = (window._dashPropInc[t.prop] || 0) + t.amount;
+        var plat = 'Direct (Zelle / Other)';
+        if (t.desc.indexOf('PadSplit') >= 0)                       plat = 'PadSplit';
+        else if (t.desc.indexOf('VCI Clearing') >= 0)              plat = 'RentPerfect / VCI';
+        else if (t.desc.indexOf('Airbnb') >= 0 || t.desc.indexOf('AIRBNB') >= 0) plat = 'Airbnb';
+        window._dashPlat[plat] = (window._dashPlat[plat] || 0) + t.amount;
+      } else {
+        if (_isCC(t.desc)) return;
+        window._dashExp[ym]  = (window._dashExp[ym]  || 0) + t.amount;
+        if (t.prop) window._dashPropExp[t.prop] = (window._dashPropExp[t.prop] || 0) + t.amount;
+      }
+    });
+
+    // Collect all years and expose for use by charts
+    var allYMs = Object.keys(window._dashInc).concat(Object.keys(window._dashExp));
+    window._dashYears = Array.from(new Set(allYMs.map(function(k){ return k.substring(0,4); }))).sort();
+    window._dashCurYear = window._dashYears[window._dashYears.length - 1] || new Date().getFullYear().toString();
+  })();
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ─── 1. PROPERTY INCOME VS EXPENSES ─────────────────────────────────────
   
     // Plugin: vertical separators between property groups
@@ -1822,14 +1863,28 @@ function initDashboard() {
     };
     Chart.register(propertySeparatorPlugin);
 
+  // Build property income/expense from file data (all years combined for overview)
+  (function(){
+    var PROP_ORDER = ['5th Dr','38th Dr','Janice Way','25th St','Grandview','Mesa','13th Ave'];
+    var allProps = PROP_ORDER.filter(function(p){
+      return window._dashPropInc[p] || window._dashPropExp[p];
+    });
+    // If no assigned data yet, fall back to all keys
+    if (!allProps.length) {
+      allProps = Object.keys(Object.assign({}, window._dashPropInc, window._dashPropExp));
+    }
+    var incData = allProps.map(function(p){ return Math.round(window._dashPropInc[p] || 0); });
+    var expData = allProps.map(function(p){ return Math.round(window._dashPropExp[p] || 0); });
+    var maxVal  = Math.max.apply(null, incData.concat(expData)) * 1.25 || 7000;
+
     new Chart(document.getElementById('propIncomeChart'), {
     type: 'bar',
     data: {
-      labels: ['5th Dr','38th Dr','Janice Way','25th St','Grandview','Mesa','13th Ave'],
+      labels: allProps,
       datasets: [
         {
-          label:'Income (Jan)',
-          data:[4800,4753,2683,4249,1486,2114,2480],
+          label:'Income (YTD)',
+          data: incData,
           backgroundColor: ctx => {
             const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
             g.addColorStop(0,'rgba(74,222,128,0.95)'); g.addColorStop(1,'rgba(34,197,94,0.5)');
@@ -1838,8 +1893,8 @@ function initDashboard() {
           borderColor:'rgba(74,222,128,0.9)', borderWidth:1, borderRadius:6, borderSkipped:false
         },
         {
-          label:'Expenses (Jan)',
-          data:[2870,3060,4160,3270,5590,1125,2418],
+          label:'Expenses (YTD)',
+          data: expData,
           backgroundColor: ctx => {
             const g = ctx.chart.ctx.createLinearGradient(0,0,0,300);
             g.addColorStop(0,'rgba(248,113,113,0.95)'); g.addColorStop(1,'rgba(220,38,38,0.5)');
@@ -1864,10 +1919,11 @@ function initDashboard() {
       scales:{
         x:{ticks:{color:'#1f2937'}, grid:{color:'rgba(0,0,0,0.08)'}},
         y:{ticks:{color:'#1f2937',callback:v=>'$'+v.toLocaleString()}, grid:{color:'rgba(0,0,0,0.08)'},
-           suggestedMax:7000}
+           suggestedMax: maxVal}
       }
     }
   });
+  })();
 
   // ─── 2. EXPENSE BREAKDOWN ─ Stacked Bar by Month (dynamic) ─────────────
   (function(){
@@ -2097,12 +2153,19 @@ function initDashboard() {
     renderExpBreakdown();
   })();
 
-  // ─── 3. REVENUE BY PLATFORM (DOUGHNUT) ──────────────────────────────────
+  // ─── 3. REVENUE BY PLATFORM (from file data) ────────────────────────────────────────
   (function(){
-    const platData   = [31963, 28589, 9500, 9188];
-    const platLabels = ['PadSplit','Direct (Zelle / Venmo)','Airbnb','LTR (Mesa & 13th Ave)'];
-    const platColors = ['#4CAF50','#2196F3','#FF5722','#9C27B0'];
-    const platTotal  = platData.reduce((a,b)=>a+b,0);
+    // Platform order: PadSplit first, then others sorted by amount
+    var PLAT_ORDER = ['PadSplit','RentPerfect / VCI','Airbnb','Direct (Zelle / Other)'];
+    var PLAT_COLORS = {'PadSplit':'#4CAF50','RentPerfect / VCI':'#9C27B0','Airbnb':'#FF5722','Direct (Zelle / Other)':'#2196F3'};
+
+    var platLabels = PLAT_ORDER.filter(function(p){ return window._dashPlat[p] > 0; });
+    if (!platLabels.length) platLabels = Object.keys(window._dashPlat).sort(function(a,b){ return window._dashPlat[b]-window._dashPlat[a]; });
+
+    var platData   = platLabels.map(function(p){ return Math.round(window._dashPlat[p] || 0); });
+    var platColors = platLabels.map(function(p){ return PLAT_COLORS[p] || '#607D8B'; });
+    var platTotal  = platData.reduce(function(a,b){ return a+b; }, 0);
+    var sugMax     = Math.max.apply(null, platData) * 1.35 || 35000;
 
     new Chart(document.getElementById('vendorPieChart'), {
       type: 'bar',
@@ -2151,7 +2214,7 @@ function initDashboard() {
           x: {
             ticks: { color:'#1f2937', callback: v => '$'+v.toLocaleString() },
             grid: { color:'rgba(0,0,0,0.06)' },
-            suggestedMax: 35000
+            suggestedMax: sugMax
           },
           y: {
             ticks: { color:'#1f2937', font:{ size:13, weight:'600' } },
@@ -2270,72 +2333,116 @@ function initDashboard() {
     });
   }
 
-  // ─── 7. MONTHLY P&L — CLEAN GROUPED BAR CHART ───────────────────────────
-  new Chart(document.getElementById('monthlyPLChart'), {
-    type:'bar',
-    data:{
-      labels:['January 2026','February 2026 (est.)'],
-      datasets:[
-        {
-          label:'Gross Income',
-          data:[36143,38200],
-          backgroundColor:'#16a34a',
-          borderColor:'#15803d',
-          borderWidth:1, borderRadius:4,
-          barPercentage:0.65, categoryPercentage:0.8
-        },
-        {
-          label:'Total Expenses',
-          data:[12275,11800],
-          backgroundColor:'#dc2626',
-          borderColor:'#b91c1c',
-          borderWidth:1, borderRadius:4,
-          barPercentage:0.65, categoryPercentage:0.8
-        },
-        {
-          label:'Net Profit',
-          data:[10396,9800],
-          backgroundColor:'#2563eb',
-          borderColor:'#1d4ed8',
-          borderWidth:1, borderRadius:4,
-          barPercentage:0.65, categoryPercentage:0.8
-        }
-      ]
-    },
-    options:{
-      responsive:true,
-      plugins:{
-        datalabels:{
-          display:true,
-          anchor:'end', align:'top',
-          color:'#1f2937',
-          font:{size:11, weight:'bold'},
-          formatter: v => '$'+v.toLocaleString()
-        },
-        legend:{
-          labels:{ color:'#374151', padding:20, font:{size:12} }
-        },
-        tooltip:{
-          ...tooltipDefaults, mode:'index', intersect:false,
-          callbacks:{
-            label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`
-          }
-        }
-      },
-      scales:{
-        x:{
-          ticks:{color:'#1f2937', font:{size:12}},
-          grid:{display:false}
-        },
-        y:{
-          ticks:{color:'#1f2937', callback: v => '$'+v.toLocaleString()},
-          grid:{color:'rgba(0,0,0,0.07)'},
-          suggestedMax:45000,
-          beginAtZero:true
-        }
+  // ─── 7. MONTHLY P&L — from file data, multi-year ready ──────────────────────────────────────
+  (function(){
+    var plInst = null;
+    var plCurYear = window._dashCurYear;
+
+    // Year dropdown: only show if >1 year
+    var plYrSel = document.getElementById('plYearSelect');
+    if (plYrSel) {
+      if (window._dashYears.length > 1) {
+        plYrSel.innerHTML = window._dashYears.map(function(y){
+          return '<option value="'+y+'"'+(y===plCurYear?' selected':'')+'>'+y+'</option>';
+        }).join('');
+        plYrSel.style.display = 'inline-block';
+      } else {
+        plYrSel.style.display = 'none';
       }
     }
-  });
+
+    function renderPL(year) {
+      year = year || plCurYear;
+      plCurYear = year;
+      // Gather all months in this year that have data
+      var allYMs = Object.keys(window._dashInc).concat(Object.keys(window._dashExp));
+      var months = Array.from(new Set(allYMs.filter(function(k){ return k.startsWith(year); }))).sort();
+
+      var MONTH_NAMES = {
+        '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'May','06':'Jun',
+        '07':'Jul','08':'Aug','09':'Sep','10':'Oct','11':'Nov','12':'Dec'
+      };
+      var labels  = months.map(function(ym){ return MONTH_NAMES[ym.substring(5)] + ' ' + ym.substring(0,4); });
+      var incArr  = months.map(function(ym){ return Math.round(window._dashInc[ym] || 0); });
+      var expArr  = months.map(function(ym){ return Math.round(window._dashExp[ym] || 0); });
+      var netArr  = months.map(function(ym, i){ return incArr[i] - expArr[i]; });
+      var sugMax  = Math.max.apply(null, incArr.concat(expArr).concat(netArr)) * 1.2 || 45000;
+
+      if (plInst) { plInst.destroy(); plInst = null; }
+      plInst = new Chart(document.getElementById('monthlyPLChart'), {
+        type:'bar',
+        data:{
+          labels: labels,
+          datasets:[
+            {
+              label:'Gross Income',
+              data: incArr,
+              backgroundColor:'#16a34a',
+              borderColor:'#15803d',
+              borderWidth:1, borderRadius:4,
+              barPercentage:0.65, categoryPercentage:0.8
+            },
+            {
+              label:'Total Expenses',
+              data: expArr,
+              backgroundColor:'#dc2626',
+              borderColor:'#b91c1c',
+              borderWidth:1, borderRadius:4,
+              barPercentage:0.65, categoryPercentage:0.8
+            },
+            {
+              label:'Net Profit',
+              data: netArr,
+              backgroundColor:'#2563eb',
+              borderColor:'#1d4ed8',
+              borderWidth:1, borderRadius:4,
+              barPercentage:0.65, categoryPercentage:0.8
+            }
+          ]
+        },
+        options:{
+          responsive:true,
+          plugins:{
+            datalabels:{
+              display:true,
+              anchor:'end', align:'top',
+              color:'#1f2937',
+              font:{size:11, weight:'bold'},
+              formatter: v => '$'+v.toLocaleString()
+            },
+            legend:{
+              labels:{ color:'#374151', padding:20, font:{size:12} }
+            },
+            tooltip:{
+              ...tooltipDefaults, mode:'index', intersect:false,
+              callbacks:{
+                label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`
+              }
+            }
+          },
+          scales:{
+            x:{
+              ticks:{color:'#1f2937', font:{size:12}},
+              grid:{display:false}
+            },
+            y:{
+              ticks:{color:'#1f2937', callback: v => '$'+v.toLocaleString()},
+              grid:{color:'rgba(0,0,0,0.07)'},
+              suggestedMax: sugMax,
+              beginAtZero:true
+            }
+          }
+        }
+      });
+    }
+
+    window.plYearChanged = function() {
+      var sel = document.getElementById('plYearSelect');
+      if (sel) renderPL(sel.value);
+    };
+
+    renderPL(plCurYear);
+  })();
 
   restoreChanges();
 }
