@@ -1803,7 +1803,7 @@ function initDashboard() {
     window._dashPropExp = {}; // { propName: total }
     window._dashPlat = {};   // { platform: total }
 
-    (window.expensesAutoLoaded || []).forEach(function(t) {
+    (typeof expensesAutoLoaded !== 'undefined' ? expensesAutoLoaded : []).forEach(function(t) {
       if (!t.date) return;
       var ym = t.date.substring(0, 7);
       if (t.income) {
